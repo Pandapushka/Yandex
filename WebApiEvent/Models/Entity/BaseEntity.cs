@@ -2,6 +2,6 @@
 {
     public abstract class BaseEntity
     {
-        public Guid Id { get; set; } //set временный, до тех пор по не подключим бд
+        public Guid Id { get; set; } //set временный, до тех пор пока не подключим бд
     }
 }
