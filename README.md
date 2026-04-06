@@ -4,7 +4,7 @@ REST API для управления мероприятиями на ASP.NET Cor
 
 ```bash
 git clone <URL>
-cd EventsApi
+cd WebApiEvent
 dotnet run
 
 Swagger
