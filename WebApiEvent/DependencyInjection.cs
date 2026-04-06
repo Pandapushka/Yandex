@@ -12,7 +12,7 @@ namespace WebApiEvent
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
             services.AddCorsPolicyCustom();
-            services.AddScoped<IEventService, EventService>();
+            services.AddSingleton<IEventService, EventService>();
             return services;
         }
     }
