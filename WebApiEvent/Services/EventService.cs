@@ -56,7 +56,7 @@ namespace WebApiEvent.Services
         {
             var existing = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
             if (existing == null)
-                throw new ServiceException($"Событие с Id {id} не найдено");
+                throw new NotFoundException($"Событие с Id {id} не найдено");
 
             var newTitle = !string.IsNullOrWhiteSpace(request.Title) ? request.Title : existing.Title;
             var newDescription = request.Description ?? existing.Description;
@@ -72,7 +72,7 @@ namespace WebApiEvent.Services
         {
             var eventEntity = _events.FirstOrDefault(e => e.Id == id);
             if (eventEntity == null)
-                throw new ServiceException($"Событие с Id {id} не найдено");
+                throw new NotFoundException($"Событие с Id {id} не найдено");
 
             _events.Remove(eventEntity);
         }
@@ -81,7 +81,7 @@ namespace WebApiEvent.Services
         {
             var eventEntity = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
             if (eventEntity == null)
-                throw new ServiceException($"Событие с Id {id} не найдено");
+                throw new NotFoundException($"Событие с Id {id} не найдено");
 
             eventEntity.Deactivate();
         }
@@ -89,7 +89,7 @@ namespace WebApiEvent.Services
         private static void ValidateDates(DateTime startAt, DateTime endAt)
         {
             if (startAt >= endAt)
-                throw new ServiceException("Дата окончания должна быть позже даты начала");
+                throw new CustomValidationException("Дата окончания должна быть позже даты начала");
         }
 
         private static EventDtoResponse ToDto(Event eventEntity) => new(

@@ -7,7 +7,7 @@ using WebApiEvent.Services;
 namespace WebApiEvent.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class EventsController(IEventService _eventService) : ControllerBase
     {
         [HttpGet]
@@ -48,6 +48,10 @@ namespace WebApiEvent.Controllers
                 var id = _eventService.Create(request);
                 return CreatedAtAction(nameof(GetById), new { id }, ResponseServerDto<string>.Success($"Событие c id {id}  успешно создано", 201));
             }
+            catch (CustomValidationException ex)
+            {
+                return BadRequest(ResponseServerDto<string>.Error(ex.Message, 400));
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, ResponseServerDto<string>.Error(ex.Message, 500));
@@ -62,9 +66,13 @@ namespace WebApiEvent.Controllers
                 _eventService.Update(id, request);
                 return Ok(ResponseServerDto<string>.Success("Событие успешно обновлено", 200));
             }
-            catch (ServiceException)
+            catch (NotFoundException ex)
             {
-                return NotFound(ResponseServerDto<string>.Error("Событие не найдено", 404));
+                return NotFound(ResponseServerDto<string>.Error(ex.Message, 404));
+            }
+            catch (CustomValidationException ex)
+            {
+                return BadRequest(ResponseServerDto<string>.Error(ex.Message, 400));
             }
             catch (Exception ex)
             {
@@ -80,9 +88,9 @@ namespace WebApiEvent.Controllers
                 _eventService.Delete(id);
                 return Ok(ResponseServerDto<string>.Success("Событие успешно удалено", 200));
             }
-            catch (ServiceException)
+            catch (NotFoundException ex)
             {
-                return NotFound(ResponseServerDto<string>.Error("Событие не найдено", 404));
+                return NotFound(ResponseServerDto<string>.Error(ex.Message, 404));
             }
             catch (Exception ex)
             {
@@ -98,9 +106,9 @@ namespace WebApiEvent.Controllers
                 _eventService.SoftDelete(id);
                 return Ok(ResponseServerDto<string>.Success("Событие успешно деактивировано", 200));
             }
-            catch (ServiceException)
+            catch (NotFoundException ex)
             {
-                return NotFound(ResponseServerDto<string>.Error("Событие не найдено", 404));
+                return NotFound(ResponseServerDto<string>.Error(ex.Message, 404));
             }
             catch (Exception ex)
             {
