@@ -1,4 +1,5 @@
 using WebApiEvent;
+using WebApiEvent.CustomMiddleware;
 using WebApiEvent.Extentions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,8 @@ if (app.Environment.IsDevelopment())
 }
 else
     app.UseCors("Prod");
+
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 

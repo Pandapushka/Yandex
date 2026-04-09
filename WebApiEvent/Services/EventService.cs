@@ -34,7 +34,9 @@ namespace WebApiEvent.Services
         public EventDtoResponse? GetById(Guid id)
         {
             var eventEntity = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
-            return eventEntity != null ? ToDto(eventEntity) : null;
+            if (eventEntity == null)
+                throw new NotFoundException($"Событие с Id {id} не найдено");
+            return ToDto(eventEntity);
         }
 
         public Guid Create(EventDtoRequest request)

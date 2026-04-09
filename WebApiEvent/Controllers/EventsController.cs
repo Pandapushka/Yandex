@@ -27,17 +27,8 @@ namespace WebApiEvent.Controllers
         [HttpGet("{id:guid}")]
         public ActionResult<ResponseServerDto<EventDtoResponse>> GetById(Guid id)
         {
-            try
-            {
-                var result = _eventService.GetById(id);
-                return result is not null
-                    ? Ok(ResponseServerDto<EventDtoResponse>.Success(result, 200))
-                    : NotFound(ResponseServerDto<EventDtoResponse>.Error("Событие не найдено", 404));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ResponseServerDto<EventDtoResponse>.Error(ex.Message, 500));
-            }
+            var result = _eventService.GetById(id);
+            return Ok(ResponseServerDto<EventDtoResponse>.Success(result, 200));
         }
 
         [HttpPost]
