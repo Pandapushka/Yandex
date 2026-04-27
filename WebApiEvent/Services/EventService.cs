@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.Data;
+using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Entity;
 
@@ -10,20 +11,31 @@ namespace WebApiEvent.Services
     {
         private static List<Event> _events = SeedData.GetEvents();
 
-        public List<EventDtoResponse> GetAll(string? title = null, DateTime? from = null, DateTime? to = null)
+        public PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request)
         {
-            var query = _events.Where(e => e.IsActive);
+            int page = request.Page < 1 ? 1 : request.Page;
+            int pageSize = request.PageSize < 1 ? 1 : (request.PageSize > 50 ? 50 : request.PageSize);
+            var title = request.Title;
+            var from = request.From;
+            var to = request.To;
 
+            var query = _events.Where(e => e.IsActive).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(title))
                 query = query.Where(e => e.Title.Contains(title, StringComparison.OrdinalIgnoreCase));
-
             if (from.HasValue)
                 query = query.Where(e => e.StartAt >= from.Value);
             if (to.HasValue)
                 query = query.Where(e => e.EndAt <= to.Value);
 
-            return query.Select(ToDto).ToList();
+            int totalCount = query.Count();
+            var items = query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(ToDto)
+                .ToList();
+
+            return new PaginatedResult<EventDtoResponse>(items, totalCount, page, pageSize);
         }
 
         public EventDtoResponse? GetById(Guid id)
