@@ -1,11 +1,8 @@
-using System;
-using System.Linq;
 using FluentAssertions;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Entity;
 using WebApiEvent.Services;
-using Xunit;
 
 namespace WebApiEvent.Tests;
 
