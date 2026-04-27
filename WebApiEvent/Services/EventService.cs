@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using WebApiEvent.CustomExceptions;
+using WebApiEvent.Data;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Entity;
 
@@ -7,28 +8,22 @@ namespace WebApiEvent.Services
 {
     public class EventService : IEventService
     {
-        private static List<Event> _events = new()
-        {
-            Event.Create(
-                "Конференция разработчиков",
-                "Ежегодная конференция по ASP.NET Core",
-                new DateTime(2026, 6, 1, 9, 0, 0),
-                new DateTime(2026, 6, 1, 18, 0, 0)
-            ),
-            Event.Create(
-                "Митап по C#",
-                "Встреча разработчиков для обсуждения лучших практик",
-                new DateTime(2026, 6, 15, 18, 0, 0),
-                new DateTime(2026, 6, 15, 21, 0, 0)
-            )
-        };
+        private static List<Event> _events = SeedData.GetEvents();
 
-        public List<EventDtoResponse> GetAll()
+        public List<EventDtoResponse> GetAll(string? title = null, DateTime? from = null, DateTime? to = null)
         {
-            return _events
-                .Where(e => e.IsActive)
-                .Select(ToDto)
-                .ToList();
+            var query = _events.Where(e => e.IsActive);
+
+
+            if (!string.IsNullOrWhiteSpace(title))
+                query = query.Where(e => e.Title.Contains(title, StringComparison.OrdinalIgnoreCase));
+
+            if (from.HasValue)
+                query = query.Where(e => e.StartAt >= from.Value);
+            if (to.HasValue)
+                query = query.Where(e => e.EndAt <= to.Value);
+
+            return query.Select(ToDto).ToList();
         }
 
         public EventDtoResponse? GetById(Guid id)

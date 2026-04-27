@@ -4,7 +4,7 @@ namespace WebApiEvent.Services
 {
     public interface IEventService
     {
-        List<EventDtoResponse> GetAll();
+        List<EventDtoResponse> GetAll(string? title = null, DateTime? from = null, DateTime? to = null);
         EventDtoResponse? GetById(Guid id);
         Guid Create(EventDtoRequest request);
         void Update(Guid id, UpdateEventDtoRequest request);
