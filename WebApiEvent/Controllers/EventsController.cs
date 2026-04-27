@@ -11,9 +11,12 @@ namespace WebApiEvent.Controllers
     public class EventsController(IEventService _eventService) : ControllerBase
     {
         [HttpGet]
-        public ActionResult<ResponseServerDto<List<EventDtoResponse>>> GetAll()
+        public ActionResult<ResponseServerDto<List<EventDtoResponse>>> GetAll(
+            [FromQuery] string? title,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to)
         {
-            var result = _eventService.GetAll();
+            var result = _eventService.GetAll(title, from, to);
             return Ok(ResponseServerDto<List<EventDtoResponse>>.Success(result, 200));
         }
 
