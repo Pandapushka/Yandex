@@ -9,7 +9,12 @@ namespace WebApiEvent.Services
 {
     public class EventService : IEventService
     {
-        private static List<Event> _events = SeedData.GetEvents();
+        private readonly List<Event> _events;
+
+        public EventService(List<Event>? events = null)
+        {
+            _events = events ?? SeedData.GetEvents();
+        }
 
         public PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request)
         {

@@ -1,4 +1,5 @@
-﻿using WebApiEvent.Extentions;
+﻿using WebApiEvent.Data;
+using WebApiEvent.Extentions;
 using WebApiEvent.Services;
 
 namespace WebApiEvent
@@ -12,7 +13,7 @@ namespace WebApiEvent
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
             services.AddCorsPolicyCustom();
-            services.AddSingleton<IEventService, EventService>();
+            services.AddSingleton<IEventService>(sp => new EventService(SeedData.GetEvents()));
             return services;
         }
     }
