@@ -1,10 +1,11 @@
-﻿using WebApiEvent.Models.DTOs.EventDtos;
+﻿using WebApiEvent.Models.DTOs;
+using WebApiEvent.Models.DTOs.EventDtos;
 
 namespace WebApiEvent.Services
 {
     public interface IEventService
     {
-        List<EventDtoResponse> GetAll();
+        PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request);
         EventDtoResponse? GetById(Guid id);
         Guid Create(EventDtoRequest request);
         void Update(Guid id, UpdateEventDtoRequest request);
