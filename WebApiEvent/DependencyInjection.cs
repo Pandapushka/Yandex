@@ -1,5 +1,6 @@
 ﻿using WebApiEvent.Data;
 using WebApiEvent.Extentions;
+using WebApiEvent.Models.Entity;
 using WebApiEvent.Services;
 
 namespace WebApiEvent
@@ -14,6 +15,9 @@ namespace WebApiEvent
             services.AddSwaggerGen();
             services.AddCorsPolicyCustom();
             services.AddSingleton<IEventService>(sp => new EventService(SeedData.GetEvents()));
+            services.AddSingleton<List<Booking>>(sp => new List<Booking>());
+            services.AddScoped<IBookingService, BookingService>();
+            services.AddHostedService<BookingProcessingService>();
             return services;
         }
     }

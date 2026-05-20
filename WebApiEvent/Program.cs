@@ -1,6 +1,5 @@
 using WebApiEvent;
 using WebApiEvent.CustomMiddleware;
-using WebApiEvent.Extentions;
 
 var builder = WebApplication.CreateBuilder(args);
 
