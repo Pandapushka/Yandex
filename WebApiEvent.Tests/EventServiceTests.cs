@@ -15,9 +15,9 @@ public class EventServiceTests
     {
         _testData = new List<Event>
         {
-            Event.Create("Конференция A", "Описание A", new DateTime(2026, 1, 10, 9, 0, 0), new DateTime(2026, 1, 10, 18, 0, 0)),
-            Event.Create("Митап B", "Описание B", new DateTime(2026, 2, 15, 18, 0, 0), new DateTime(2026, 2, 15, 21, 0, 0)),
-            Event.Create("Воркшоп C", "Описание C", new DateTime(2026, 3, 5, 10, 0, 0), new DateTime(2026, 3, 5, 17, 0, 0)),
+            Event.Create("Конференция A", "Описание A", new DateTime(2026, 1, 10, 9, 0, 0), new DateTime(2026, 1, 10, 18, 0, 0), 100),
+            Event.Create("Митап B", "Описание B", new DateTime(2026, 2, 15, 18, 0, 0), new DateTime(2026, 2, 15, 21, 0, 0), 50),
+            Event.Create("Воркшоп C", "Описание C", new DateTime(2026, 3, 5, 10, 0, 0), new DateTime(2026, 3, 5, 17, 0, 0), 30),
         };
         _service = new EventService(_testData);
     }
@@ -25,7 +25,13 @@ public class EventServiceTests
     [Fact]
     public void Create_ValidEvent_ReturnsIdAndAddsToList()
     {
-        var request = new EventDtoRequest("Новое событие", "Описание", new DateTime(2026, 5, 1, 10, 0, 0), new DateTime(2026, 5, 1, 18, 0, 0));
+        var request = new EventDtoRequest(
+            "Новое событие",
+            "Описание",
+            new DateTime(2026, 5, 1, 10, 0, 0),
+            new DateTime(2026, 5, 1, 18, 0, 0),
+            20
+        );
 
         var id = _service.Create(request);
         var all = _service.GetAll(new EventRequestDto { PageSize = 100 });
@@ -134,8 +140,8 @@ public class EventServiceTests
     [Fact]
     public void Pagination_ReturnsCorrectPageAndTotalPages()
     {
-        _service.Create(new EventDtoRequest("Event4", "", new DateTime(2026, 4, 1, 10, 0, 0), new DateTime(2026, 4, 1, 18, 0, 0)));
-        _service.Create(new EventDtoRequest("Event5", "", new DateTime(2026, 5, 1, 10, 0, 0), new DateTime(2026, 5, 1, 18, 0, 0)));
+        _service.Create(new EventDtoRequest("Event4", "", new DateTime(2026, 4, 1, 10, 0, 0), new DateTime(2026, 4, 1, 18, 0, 0), 10));
+        _service.Create(new EventDtoRequest("Event5", "", new DateTime(2026, 5, 1, 10, 0, 0), new DateTime(2026, 5, 1, 18, 0, 0), 10));
 
         var requestPage1 = new EventRequestDto { Page = 1, PageSize = 2 };
         var result1 = _service.GetAll(requestPage1);
@@ -153,7 +159,7 @@ public class EventServiceTests
     [Fact]
     public void CombinedFilters_ApplyAllTogether()
     {
-        _service.Create(new EventDtoRequest("Special Conference", "", new DateTime(2026, 2, 20, 10, 0, 0), new DateTime(2026, 2, 20, 18, 0, 0)));
+        _service.Create(new EventDtoRequest("Special Conference", "", new DateTime(2026, 2, 20, 10, 0, 0), new DateTime(2026, 2, 20, 18, 0, 0), 10));
 
         var request = new EventRequestDto
         {
@@ -189,7 +195,8 @@ public class EventServiceTests
             "Test",
             "Desc",
             new DateTime(2026, 5, 10, 10, 0, 0),
-            new DateTime(2026, 5, 9, 18, 0, 0)
+            new DateTime(2026, 5, 9, 18, 0, 0),
+            10
         );
 
         Action act = () => _service.Create(request);

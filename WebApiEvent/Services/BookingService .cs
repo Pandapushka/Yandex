@@ -7,26 +7,30 @@ namespace WebApiEvent.Services
     public class BookingService : IBookingService
     {
         private readonly List<Booking> _bookings;
-        private readonly IEventService _eventService;
+        private readonly List<Event> _events;
+        private readonly object _bookingLock = new();
 
-        public BookingService(List<Booking> bookings, IEventService eventService)
+        public BookingService(List<Booking> bookings, List<Event> events)
         {
             _bookings = bookings;
-            _eventService = eventService;
+            _events = events;
         }
 
         public Task<BookingResponse> CreateBookingAsync(Guid eventId)
         {
-            _eventService.GetById(eventId);
-
-            var booking = Booking.CreatePending(eventId);
-
-            lock (_bookings)
+            lock (_bookingLock)
             {
-                _bookings.Add(booking);
-            }
+                var eventEntity = _events.FirstOrDefault(e => e.Id == eventId && e.IsActive);
+                if (eventEntity == null)
+                    throw new NotFoundException($"Событие с Id {eventId} не найдено");
 
-            return Task.FromResult(MapToResponse(booking));
+                if (!eventEntity.TryReserveSeats(1))
+                    throw new NoAvailableSeatsException("Нет свободных мест для этого события");
+
+                var booking = Booking.CreatePending(eventId);
+                _bookings.Add(booking);
+                return Task.FromResult(MapToResponse(booking));
+            }
         }
 
         public Task<BookingResponse> GetBookingAsync(Guid bookingId)

@@ -6,12 +6,14 @@ namespace WebApiEvent.Services
     public class BookingProcessingService : BackgroundService
     {
         private readonly List<Booking> _bookings;
+        private readonly List<Event> _events;
         private readonly TimeSpan _interval = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan _processingDelay = TimeSpan.FromSeconds(2);
+        private readonly SemaphoreSlim _processingSemaphore = new(1, 1);
 
-        public BookingProcessingService(List<Booking> bookings)
+        public BookingProcessingService(List<Booking> bookings, List<Event> events)
         {
             _bookings = bookings;
+            _events = events;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -24,21 +26,56 @@ namespace WebApiEvent.Services
                     pendingBookings = _bookings.Where(b => b.Status == BookingStatus.Pending).ToList();
                 }
 
-                foreach (var booking in pendingBookings)
-                {
-                    await Task.Delay(_processingDelay, stoppingToken);
-
-                    lock (_bookings)
-                    {
-                        var currentBooking = _bookings.FirstOrDefault(b => b.Id == booking.Id);
-                        if (currentBooking != null && currentBooking.Status == BookingStatus.Pending)
-                        {
-                            currentBooking.Confirm();
-                        }
-                    }
-                }
+                var tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
+                await Task.WhenAll(tasks);
 
                 await Task.Delay(_interval, stoppingToken);
+            }
+        }
+
+        private async Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+
+                await _processingSemaphore.WaitAsync(stoppingToken);
+                try
+                {
+                    var eventEntity = _events.FirstOrDefault(e => e.Id == booking.EventId);
+                    if (eventEntity == null || !eventEntity.IsActive)
+                    {
+                        booking.Reject();
+                        return;
+                    }
+
+                    booking.Confirm();
+                }
+                finally
+                {
+                    _processingSemaphore.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                
+            }
+            catch (Exception)
+            {
+                await _processingSemaphore.WaitAsync(stoppingToken);
+                try
+                {
+                    var eventEntity = _events.FirstOrDefault(e => e.Id == booking.EventId);
+                    if (eventEntity != null && eventEntity.IsActive)
+                    {
+                        eventEntity.ReleaseSeats(1);
+                    }
+                    booking.Reject();
+                }
+                finally
+                {
+                    _processingSemaphore.Release();
+                }
             }
         }
     }

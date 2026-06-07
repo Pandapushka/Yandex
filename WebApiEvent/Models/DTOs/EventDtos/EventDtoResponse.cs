@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace WebApiEvent.Models.DTOs.EventDtos
+﻿namespace WebApiEvent.Models.DTOs.EventDtos
 {
     public record EventDtoResponse
     (
@@ -8,6 +6,8 @@ namespace WebApiEvent.Models.DTOs.EventDtos
         string Title,
         string? Description,
         DateTime StartAt,
-        DateTime EndAt
+        DateTime EndAt,
+        int TotalSeats,
+        int AvailableSeats
     );
 }

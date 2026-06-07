@@ -16,6 +16,10 @@ namespace WebApiEvent.Models.DTOs.EventDtos
         DateTime StartAt,
 
         [Required(ErrorMessage = "Дата окончания обязательна")]
-        DateTime EndAt
+        DateTime EndAt,
+
+        [Required(ErrorMessage = "Количество мест обязательно")]
+        [Range(1, int.MaxValue, ErrorMessage = "Количество мест должно быть больше 0")]
+        int TotalSeats
     );
 }

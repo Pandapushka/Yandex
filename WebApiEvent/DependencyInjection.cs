@@ -14,10 +14,13 @@ namespace WebApiEvent
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
             services.AddCorsPolicyCustom();
-            services.AddSingleton<IEventService>(sp => new EventService(SeedData.GetEvents()));
-            services.AddSingleton<List<Booking>>(sp => new List<Booking>());
+
+            services.AddSingleton<List<Event>>(sp => SeedData.GetEvents());
+            services.AddSingleton<IEventService, EventService>();
+            services.AddSingleton<List<Booking>>();
             services.AddScoped<IBookingService, BookingService>();
             services.AddHostedService<BookingProcessingService>();
+
             return services;
         }
     }
