@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.Models.DTOs;
+using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Services;
 
@@ -8,7 +9,7 @@ namespace WebApiEvent.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class EventsController(IEventService _eventService) : ControllerBase
+    public class EventsController(IEventService _eventService, IBookingService _bookingService) : ControllerBase
     {
         [HttpGet]
         public ActionResult<ResponseServerDto<PaginatedResult<EventDtoResponse>>> GetAll([FromQuery] EventRequestDto request)
@@ -50,6 +51,18 @@ namespace WebApiEvent.Controllers
         {
             _eventService.SoftDelete(id);
             return Ok(ResponseServerDto<string>.Success("Событие успешно деактивировано", 200));
+        }
+
+        [HttpPost("{id:guid}/book")]
+        public async Task<ActionResult<ResponseServerDto<BookingResponse>>> BookEvent(Guid id)
+        {
+            var booking = await _bookingService.CreateBookingAsync(id);
+            return AcceptedAtAction(
+                actionName: nameof(BookingsController.GetBooking),
+                controllerName: "Bookings",
+                routeValues: new { id = booking.Id },
+                value: ResponseServerDto<BookingResponse>.Success(booking, 202)
+            );
         }
     }
 }
