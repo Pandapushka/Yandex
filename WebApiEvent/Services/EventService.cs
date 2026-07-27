@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using WebApiEvent.CustomExceptions;
+﻿using WebApiEvent.CustomExceptions;
 using WebApiEvent.Data;
 using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.EventDtos;
@@ -11,9 +10,9 @@ namespace WebApiEvent.Services
     {
         private readonly List<Event> _events;
 
-        public EventService(List<Event>? events = null)
+        public EventService(List<Event> events)
         {
-            _events = events ?? SeedData.GetEvents();
+            _events = events;
         }
 
         public PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request)
@@ -59,7 +58,8 @@ namespace WebApiEvent.Services
                 request.Title,
                 request.Description ?? string.Empty,
                 request.StartAt,
-                request.EndAt
+                request.EndAt,
+                request.TotalSeats
             );
 
             _events.Add(eventEntity);
@@ -111,7 +111,9 @@ namespace WebApiEvent.Services
             eventEntity.Title,
             eventEntity.Description,
             eventEntity.StartAt,
-            eventEntity.EndAt
+            eventEntity.EndAt,
+            eventEntity.TotalSeats,
+            eventEntity.AvailableSeats
         );
     }
 }
