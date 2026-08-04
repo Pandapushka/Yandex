@@ -5,11 +5,11 @@ namespace WebApiEvent.Services
 {
     public interface IEventService
     {
-        PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request);
-        EventDtoResponse? GetById(Guid id);
-        Guid Create(EventDtoRequest request);
-        void Update(Guid id, UpdateEventDtoRequest request);
-        void Delete(Guid id);
-        void SoftDelete(Guid id);
+        Task<PaginatedResult<EventDtoResponse>> GetAllAsync(EventRequestDto request);
+        Task<EventDtoResponse?> GetByIdAsync(Guid id);
+        Task<Guid> CreateAsync(EventDtoRequest request);
+        Task UpdateAsync(Guid id, UpdateEventDtoRequest request);
+        Task DeleteAsync(Guid id);
+        Task SoftDeleteAsync(Guid id);
     }
 }

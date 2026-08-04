@@ -10,7 +10,10 @@ namespace WebApiEvent.Models.Entity
         public DateTime StartAt { get; private set; }
         public DateTime EndAt { get; private set; }
         public bool IsActive { get; private set; } = true;
-        private Event() {}
+
+        public ICollection<Booking> Bookings { get; private set; } = new List<Booking>();
+
+        private Event() { }
 
         public static Event Create(string title, string description, DateTime startAt, DateTime endAt)
         {
@@ -47,4 +50,3 @@ namespace WebApiEvent.Models.Entity
         public void Deactivate() => IsActive = false;
     }
 }
-

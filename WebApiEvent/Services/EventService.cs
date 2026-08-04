@@ -1,6 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
 using WebApiEvent.CustomExceptions;
-using WebApiEvent.Data;
+using WebApiEvent.DataAccess;
 using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Entity;
@@ -9,14 +9,14 @@ namespace WebApiEvent.Services
 {
     public class EventService : IEventService
     {
-        private readonly List<Event> _events;
+        private readonly AppDbContext _context;
 
-        public EventService(List<Event>? events = null)
+        public EventService(AppDbContext context)
         {
-            _events = events ?? SeedData.GetEvents();
+            _context = context;
         }
 
-        public PaginatedResult<EventDtoResponse> GetAll(EventRequestDto request)
+        public async Task<PaginatedResult<EventDtoResponse>> GetAllAsync(EventRequestDto request)
         {
             int page = request.Page < 1 ? 1 : request.Page;
             int pageSize = request.PageSize < 1 ? 1 : (request.PageSize > 50 ? 50 : request.PageSize);
@@ -24,34 +24,35 @@ namespace WebApiEvent.Services
             var from = request.From;
             var to = request.To;
 
-            var query = _events.Where(e => e.IsActive).AsQueryable();
+            var query = _context.Events.Where(e => e.IsActive).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(title))
-                query = query.Where(e => e.Title.Contains(title, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(e => e.Title.Contains(title));
             if (from.HasValue)
                 query = query.Where(e => e.StartAt >= from.Value);
             if (to.HasValue)
                 query = query.Where(e => e.EndAt <= to.Value);
 
-            int totalCount = query.Count();
-            var items = query
+            int totalCount = await query.CountAsync();
+            var items = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(ToDto)
-                .ToList();
+                .Select(e => new EventDtoResponse(e.Id, e.Title, e.Description, e.StartAt, e.EndAt))
+                .ToListAsync();
 
             return new PaginatedResult<EventDtoResponse>(items, totalCount, page, pageSize);
         }
 
-        public EventDtoResponse? GetById(Guid id)
+        public async Task<EventDtoResponse?> GetByIdAsync(Guid id)
         {
-            var eventEntity = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
+            var eventEntity = await _context.Events
+                .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
             if (eventEntity == null)
                 throw new NotFoundException($"Событие с Id {id} не найдено");
             return ToDto(eventEntity);
         }
 
-        public Guid Create(EventDtoRequest request)
+        public async Task<Guid> CreateAsync(EventDtoRequest request)
         {
             ValidateDates(request.StartAt, request.EndAt);
 
@@ -62,13 +63,15 @@ namespace WebApiEvent.Services
                 request.EndAt
             );
 
-            _events.Add(eventEntity);
+            _context.Events.Add(eventEntity);
+            await _context.SaveChangesAsync();
             return eventEntity.Id;
         }
 
-        public void Update(Guid id, UpdateEventDtoRequest request)
+        public async Task UpdateAsync(Guid id, UpdateEventDtoRequest request)
         {
-            var existing = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
+            var existing = await _context.Events
+                .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
             if (existing == null)
                 throw new NotFoundException($"Событие с Id {id} не найдено");
 
@@ -80,24 +83,28 @@ namespace WebApiEvent.Services
             ValidateDates(newStartAt, newEndAt);
 
             existing.Update(newTitle, newDescription, newStartAt, newEndAt);
+            await _context.SaveChangesAsync();
         }
 
-        public void Delete(Guid id)
+        public async Task DeleteAsync(Guid id)
         {
-            var eventEntity = _events.FirstOrDefault(e => e.Id == id);
+            var eventEntity = await _context.Events.FirstOrDefaultAsync(e => e.Id == id);
             if (eventEntity == null)
                 throw new NotFoundException($"Событие с Id {id} не найдено");
 
-            _events.Remove(eventEntity);
+            _context.Events.Remove(eventEntity);
+            await _context.SaveChangesAsync();
         }
 
-        public void SoftDelete(Guid id)
+        public async Task SoftDeleteAsync(Guid id)
         {
-            var eventEntity = _events.FirstOrDefault(e => e.Id == id && e.IsActive);
+            var eventEntity = await _context.Events
+                .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
             if (eventEntity == null)
                 throw new NotFoundException($"Событие с Id {id} не найдено");
 
             eventEntity.Deactivate();
+            await _context.SaveChangesAsync();
         }
 
         private static void ValidateDates(DateTime startAt, DateTime endAt)

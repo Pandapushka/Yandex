@@ -10,7 +10,9 @@ namespace WebApiEvent.Models.Entity
         public DateTime CreatedAt { get; private set; }
         public DateTime? ProcessedAt { get; private set; }
 
-        private Booking() { } 
+        public Event Event { get; private set; } = null!;
+
+        private Booking() { }
 
         public static Booking CreatePending(Guid eventId)
         {

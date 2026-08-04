@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Services;

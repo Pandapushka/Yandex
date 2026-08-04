@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebApiEvent.CustomExceptions;
 using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Models.DTOs.EventDtos;
@@ -12,44 +11,44 @@ namespace WebApiEvent.Controllers
     public class EventsController(IEventService _eventService, IBookingService _bookingService) : ControllerBase
     {
         [HttpGet]
-        public ActionResult<ResponseServerDto<PaginatedResult<EventDtoResponse>>> GetAll([FromQuery] EventRequestDto request)
+        public async Task<ActionResult<ResponseServerDto<PaginatedResult<EventDtoResponse>>>> GetAll([FromQuery] EventRequestDto request)
         {
-            var result = _eventService.GetAll(request);
+            var result = await _eventService.GetAllAsync(request);
             return Ok(ResponseServerDto<PaginatedResult<EventDtoResponse>>.Success(result, 200));
         }
 
         [HttpGet("{id:guid}")]
-        public ActionResult<ResponseServerDto<EventDtoResponse>> GetById(Guid id)
+        public async Task<ActionResult<ResponseServerDto<EventDtoResponse>>> GetById(Guid id)
         {
-            var result = _eventService.GetById(id);
+            var result = await _eventService.GetByIdAsync(id);
             return Ok(ResponseServerDto<EventDtoResponse>.Success(result, 200));
         }
 
         [HttpPost]
-        public ActionResult<ResponseServerDto<string>> Create([FromBody] EventDtoRequest request)
+        public async Task<ActionResult<ResponseServerDto<string>>> Create([FromBody] EventDtoRequest request)
         {
-            var id = _eventService.Create(request);
+            var id = await _eventService.CreateAsync(request);
             return CreatedAtAction(nameof(GetById), new { id }, ResponseServerDto<string>.Success($"Событие c id {id} успешно создано", 201));
         }
 
         [HttpPut("{id:guid}")]
-        public ActionResult<ResponseServerDto<string>> Update(Guid id, [FromBody] UpdateEventDtoRequest request)
+        public async Task<ActionResult<ResponseServerDto<string>>> Update(Guid id, [FromBody] UpdateEventDtoRequest request)
         {
-            _eventService.Update(id, request);
+            await _eventService.UpdateAsync(id, request);
             return Ok(ResponseServerDto<string>.Success("Событие успешно обновлено", 200));
         }
 
         [HttpDelete("{id:guid}")]
-        public ActionResult<ResponseServerDto<string>> Delete(Guid id)
+        public async Task<ActionResult<ResponseServerDto<string>>> Delete(Guid id)
         {
-            _eventService.Delete(id);
+            await _eventService.DeleteAsync(id);
             return Ok(ResponseServerDto<string>.Success("Событие успешно удалено", 200));
         }
 
         [HttpPatch("{id:guid}/soft-delete")]
-        public ActionResult<ResponseServerDto<string>> SoftDelete(Guid id)
+        public async Task<ActionResult<ResponseServerDto<string>>> SoftDelete(Guid id)
         {
-            _eventService.SoftDelete(id);
+            await _eventService.SoftDeleteAsync(id);
             return Ok(ResponseServerDto<string>.Success("Событие успешно деактивировано", 200));
         }
 

@@ -1,4 +1,6 @@
-﻿using WebApiEvent.CustomExceptions;
+﻿using Microsoft.EntityFrameworkCore;
+using WebApiEvent.CustomExceptions;
+using WebApiEvent.DataAccess;
 using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Models.Entity;
 
@@ -6,41 +8,45 @@ namespace WebApiEvent.Services
 {
     public class BookingService : IBookingService
     {
-        private readonly List<Booking> _bookings;
+        private readonly AppDbContext _context;
         private readonly IEventService _eventService;
+        private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public BookingService(List<Booking> bookings, IEventService eventService)
+        public BookingService(AppDbContext context, IEventService eventService)
         {
-            _bookings = bookings;
+            _context = context;
             _eventService = eventService;
         }
 
-        public Task<BookingResponse> CreateBookingAsync(Guid eventId)
+        public async Task<BookingResponse> CreateBookingAsync(Guid eventId)
         {
-            _eventService.GetById(eventId);
+            await _eventService.GetByIdAsync(eventId);
 
             var booking = Booking.CreatePending(eventId);
 
-            lock (_bookings)
+            await _semaphore.WaitAsync();
+            try
             {
-                _bookings.Add(booking);
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+            }
+            finally
+            {
+                _semaphore.Release();
             }
 
-            return Task.FromResult(MapToResponse(booking));
+            return MapToResponse(booking);
         }
 
-        public Task<BookingResponse> GetBookingAsync(Guid bookingId)
+        public async Task<BookingResponse> GetBookingAsync(Guid bookingId)
         {
-            Booking? booking;
-            lock (_bookings)
-            {
-                booking = _bookings.FirstOrDefault(b => b.Id == bookingId);
-            }
+            var booking = await _context.Bookings
+                .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null)
                 throw new NotFoundException($"Бронь с Id {bookingId} не найдена");
 
-            return Task.FromResult(MapToResponse(booking));
+            return MapToResponse(booking);
         }
 
         private static BookingResponse MapToResponse(Booking booking) => new(
