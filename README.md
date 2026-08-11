@@ -1,7 +1,16 @@
-REST API для управления мероприятиями на ASP.NET Core Web API.
+# REST API для управления мероприятиями на ASP.NET Core Web API
+
+## Требования
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- PostgreSQL (запускается через Docker Compose)
 
 ## Запуск
 
+### 1. Клонировать репозиторий
+
+```bash
 git clone <URL>
 cd WebApiEvent
 2. Запустить инфраструктуру (PostgreSQL, Kafka, ZooKeeper)
@@ -33,16 +42,39 @@ http://localhost:5171/swagger/index.html
 bash
 cd WebApiEvent.Tests
 dotnet test
+Тесты используют InMemory-провайдер EF Core и не требуют запущенной базы данных.
 
-## Новые эндпоинты (спринт 3)
+Новые эндпоинты (спринт 3)
+POST /events/{id}/book – создать бронь на мероприятие.
+Возвращает 202 Accepted + заголовок Location: /bookings/{bookingId} и тело брони.
 
-- `POST /events/{id}/book` – создать бронь на мероприятие.  
-  Возвращает `202 Accepted` + заголовок `Location: /bookings/{bookingId}` и тело брони.
+GET /bookings/{id} – получить статус брони.
+Возвращает 200 OK с информацией о брони.
 
-- `GET /bookings/{id}` – получить статус брони.  
-  Возвращает `200 OK` с информацией о брони.
+Модель Booking
+Id (Guid)
 
-## Модель Booking
+EventId (Guid)
+
+Status (BookingStatus: Pending, Confirmed, Rejected)
+
+CreatedAt (DateTime)
+
+ProcessedAt (DateTime?, заполняется после обработки)
+
+Фоновая обработка
+BookingProcessingService (BackgroundService) запускается каждые 5 секунд.
+
+Находит брони со статусом Pending, имитирует внешний вызов (задержка 2 сек), затем переводит в статус Confirmed и заполняет ProcessedAt.
+
+Хранение данных 
+Данные хранятся в PostgreSQL через Entity Framework Core.
+
+Маппинг сущностей настроен через Fluent API (IEntityTypeConfiguration<T>).
+
+Схема БД создаётся автоматически при запуске через EnsureCreated().
+
+Сервисы работают с AppDbContext напрямую и зарегистрированы как Scoped.
 
 Фоновый сервис использует IServiceScopeFactory для работы со Scoped-зависимостями.
 
