@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using WebApiEvent.CustomExceptions;
+﻿using WebApiEvent.CustomExceptions;
 using WebApiEvent.DataAccess;
 using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.EventDtos;
@@ -11,9 +10,9 @@ namespace WebApiEvent.Services
     {
         private readonly AppDbContext _context;
 
-        public EventService(AppDbContext context)
+        public EventService(List<Event>? events = null)
         {
-            _context = context;
+            _events = events ?? SeedData.GetEvents();
         }
 
         public async Task<PaginatedResult<EventDtoResponse>> GetAllAsync(EventRequestDto request)
@@ -60,7 +59,8 @@ namespace WebApiEvent.Services
                 request.Title,
                 request.Description ?? string.Empty,
                 request.StartAt,
-                request.EndAt
+                request.EndAt,
+                request.TotalSeats
             );
 
             _context.Events.Add(eventEntity);
@@ -118,7 +118,9 @@ namespace WebApiEvent.Services
             eventEntity.Title,
             eventEntity.Description,
             eventEntity.StartAt,
-            eventEntity.EndAt
+            eventEntity.EndAt,
+            eventEntity.TotalSeats,
+            eventEntity.AvailableSeats
         );
     }
 }

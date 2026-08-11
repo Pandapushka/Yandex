@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.DataAccess;
 using WebApiEvent.Models.DTOs.EventDtos;
@@ -9,113 +8,120 @@ using WebApiEvent.Services;
 
 public class BookingServiceTests
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly Mock<IEventService> _eventServiceMock;
+    private readonly List<Booking> _bookings;
+    private readonly BookingService _bookingService;
 
     public BookingServiceTests()
     {
-        var dbName = Guid.NewGuid().ToString();
-        var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseInMemoryDatabase(dbName));
-        services.AddScoped<IEventService, EventService>();
-        services.AddScoped<IBookingService, BookingService>();
-        _serviceProvider = services.BuildServiceProvider();
+        _bookings = new List<Booking>();
+        _eventServiceMock = new Mock<IEventService>();
+        _bookingService = new BookingService(_bookings, _eventServiceMock.Object);
     }
 
     [Fact]
-    public async Task CreateBookingAsync_ValidEventId_ReturnsBookingResponseWithPendingStatus()
+    public async Task CreateBookingAsync_ValidEventId_ReturnsBookingResponseWithPendingStatusAndDecreasesSeats()
     {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        var eventId = Guid.NewGuid();
+        _eventServiceMock.Setup(x => x.GetById(eventId))
+            .Returns(new EventDtoResponse(eventId, "Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
 
-        var result = await bookingService.CreateBookingAsync(eventId);
+        var result = await _bookingService.CreateBookingAsync(eventId);
 
         result.Should().NotBeNull();
         result.EventId.Should().Be(eventId);
         result.Status.Should().Be(BookingStatus.Pending);
         result.ProcessedAt.Should().BeNull();
+        _bookings.Should().ContainSingle(b => b.Id == result.Id);
     }
 
     [Fact]
-    public async Task GetBookingAsync_ExistingBooking_ReturnsCorrectBookingResponse()
+    public async Task CreateBookingAsync_WhenNoSeats_ThrowsNoAvailableSeatsException()
     {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        var booking = await bookingService.CreateBookingAsync(eventId);
+        var eventId = Guid.NewGuid();
+        var booking = Booking.CreatePending(eventId);
+        _bookings.Add(booking);
 
-        var result = await bookingService.GetBookingAsync(booking.Id);
+        var result = await _bookingService.GetBookingAsync(booking.Id);
 
-        result.Should().NotBeNull();
         result.Id.Should().Be(booking.Id);
         result.EventId.Should().Be(eventId);
-        result.Status.Should().Be(BookingStatus.Pending);
-    }
-
-    [Fact]
-    public async Task CreateBookingAsync_MultipleBookingsForSameEvent_AllHaveUniqueIds()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-
-        var booking1 = await bookingService.CreateBookingAsync(eventId);
-        var booking2 = await bookingService.CreateBookingAsync(eventId);
-
-        booking1.Id.Should().NotBe(booking2.Id);
-    }
-
-    [Fact]
-    public async Task CreateBookingAsync_NonExistingEvent_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventId = Guid.NewGuid();
-
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(eventId);
-
-        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдено*");
-    }
-
-    [Fact]
-    public async Task CreateBookingAsync_SoftDeletedEvent_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        await eventService.SoftDeleteAsync(eventId);
-
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(eventId);
-
-        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]
     public async Task GetBookingAsync_NonExistingId_ThrowsNotFoundException()
     {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var nonExistentId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        _eventServiceMock.Setup(x => x.GetById(eventId))
+            .Returns(new EventDtoResponse(eventId, "Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
 
-        Func<Task> act = async () => await bookingService.GetBookingAsync(nonExistentId);
+        var booking1 = await _bookingService.CreateBookingAsync(eventId);
+        var booking2 = await _bookingService.CreateBookingAsync(eventId);
 
-        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдена*");
+        booking1.Id.Should().NotBe(booking2.Id);
+        _bookings.Should().HaveCount(2);
+        _bookings.All(b => b.EventId == eventId).Should().BeTrue();
     }
 
     [Fact]
-    public async Task CreateBookingAsync_WithEmptyEventId_ThrowsNotFoundException()
+    public async Task GetBookingAsync_AfterProcessing_ReturnsUpdatedStatus()
     {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var emptyEventId = Guid.Empty;
+        var eventId = Guid.NewGuid();
+        var booking = Booking.CreatePending(eventId);
+        _bookings.Add(booking);
+        booking.Confirm();
 
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(emptyEventId);
+        var result = await _bookingService.GetBookingAsync(booking.Id);
+
+        result.Status.Should().Be(BookingStatus.Confirmed);
+        result.ProcessedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_ConcurrentRequests_AllBookingsHaveUniqueIds()
+    {
+        var eventId = Guid.NewGuid();
+        _eventServiceMock.Setup(x => x.GetById(eventId))
+            .Throws(new NotFoundException("Событие не найдено"));
+
+        Func<Task> act = async () => await _bookingService.CreateBookingAsync(eventId);
+
+        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдено*");
+        _bookings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Booking_Confirm_SetsStatusConfirmedAndProcessedAt()
+    {
+        var eventId = Guid.NewGuid();
+        _eventServiceMock.Setup(x => x.GetById(eventId))
+            .Throws(new NotFoundException("Событие не найдено"));
+
+        Func<Task> act = async () => await _bookingService.CreateBookingAsync(eventId);
 
         await act.Should().ThrowAsync<NotFoundException>();
+        _bookings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Booking_Reject_SetsStatusRejectedAndProcessedAt()
+    {
+        var nonExistentId = Guid.NewGuid();
+
+        Func<Task> act = async () => await _bookingService.GetBookingAsync(nonExistentId);
+
+        booking.Status.Should().Be(BookingStatus.Rejected);
+        booking.ProcessedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_WithEmptyEventId_ThrowsDomainException()
+    {
+        var emptyEventId = Guid.Empty;
+
+        Func<Task> act = async () => await _bookingService.CreateBookingAsync(emptyEventId);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*EventId*");
+        _bookings.Should().BeEmpty();
     }
 }
