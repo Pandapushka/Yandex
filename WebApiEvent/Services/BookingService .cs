@@ -1,6 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using WebApiEvent.CustomExceptions;
-using WebApiEvent.DataAccess;
+﻿using WebApiEvent.CustomExceptions;
+using WebApiEvent.DataAccess.Repositories;
 using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Models.Entity;
 
@@ -8,13 +7,13 @@ namespace WebApiEvent.Services
 {
     public class BookingService : IBookingService
     {
-        private readonly AppDbContext _context;
+        private readonly IBookingRepository _bookingRepository;
         private readonly IEventService _eventService;
         private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public BookingService(AppDbContext context, IEventService eventService)
+        public BookingService(IBookingRepository bookingRepository, IEventService eventService)
         {
-            _context = context;
+            _bookingRepository = bookingRepository;
             _eventService = eventService;
         }
 
@@ -27,8 +26,7 @@ namespace WebApiEvent.Services
             await _semaphore.WaitAsync();
             try
             {
-                _context.Bookings.Add(booking);
-                await _context.SaveChangesAsync();
+                await _bookingRepository.AddAsync(booking);
             }
             finally
             {
@@ -40,9 +38,7 @@ namespace WebApiEvent.Services
 
         public async Task<BookingResponse> GetBookingAsync(Guid bookingId)
         {
-            var booking = await _context.Bookings
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
-
+            var booking = await _bookingRepository.GetByIdAsync(bookingId);
             if (booking == null)
                 throw new NotFoundException($"Бронь с Id {bookingId} не найдена");
 

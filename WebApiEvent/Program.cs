@@ -1,7 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using WebApiEvent;
 using WebApiEvent.CustomMiddleware;
-using WebApiEvent.DataAccess;
 using WebApiEvent.Data;
+using WebApiEvent.DataAccess;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 
     if (!db.Events.Any())
     {

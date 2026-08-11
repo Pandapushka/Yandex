@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using WebApiEvent.DataAccess;
+using WebApiEvent.DataAccess.Repositories;
 using WebApiEvent.Models.Enums;
 
 namespace WebApiEvent.Services
@@ -22,11 +22,8 @@ namespace WebApiEvent.Services
                 List<Guid> pendingBookingIds;
                 using (var scope = _scopeFactory.CreateScope())
                 {
-                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    pendingBookingIds = db.Bookings
-                        .Where(b => b.Status == BookingStatus.Pending)
-                        .Select(b => b.Id)
-                        .ToList();
+                    var bookingRepo = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+                    pendingBookingIds = await bookingRepo.GetPendingBookingIdsAsync();
                 }
 
                 foreach (var bookingId in pendingBookingIds)
@@ -35,12 +32,12 @@ namespace WebApiEvent.Services
 
                     using (var scope = _scopeFactory.CreateScope())
                     {
-                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var booking = db.Bookings.FirstOrDefault(b => b.Id == bookingId);
+                        var bookingRepo = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+                        var booking = await bookingRepo.GetByIdAsync(bookingId);
                         if (booking != null && booking.Status == BookingStatus.Pending)
                         {
                             booking.Confirm();
-                            await db.SaveChangesAsync(stoppingToken);
+                            await bookingRepo.SaveChangesAsync();
                         }
                     }
                 }

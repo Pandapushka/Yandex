@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApiEvent", "WebApiEvent\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApiEvent.Tests", "WebApiEvent.Tests\WebApiEvent.Tests.csproj", "{D8D0F4D7-0112-4400-B86A-474CBD8BE7CA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventApi.IntegrationTests", "EventApi.IntegrationTests\EventApi.IntegrationTests.csproj", "{38321C96-EE48-4179-93F5-DB4A688919C0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,8 +23,15 @@ Global
 		{D8D0F4D7-0112-4400-B86A-474CBD8BE7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D8D0F4D7-0112-4400-B86A-474CBD8BE7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D8D0F4D7-0112-4400-B86A-474CBD8BE7CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38321C96-EE48-4179-93F5-DB4A688919C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38321C96-EE48-4179-93F5-DB4A688919C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38321C96-EE48-4179-93F5-DB4A688919C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38321C96-EE48-4179-93F5-DB4A688919C0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DD2C6CB4-C62B-435C-9574-C3A89B47F499}
 	EndGlobalSection
 EndGlobal
