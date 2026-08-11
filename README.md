@@ -1,88 +1,32 @@
-# REST API для управления мероприятиями на ASP.NET Core Web API
+# Event API
+
+REST API для управления мероприятиями на ASP.NET Core Web API.
 
 ## Требования
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- PostgreSQL (запускается через Docker Compose)
+.NET 8 SDK, Docker Desktop.
 
 ## Запуск
 
-### 1. Клонировать репозиторий
-
-```bash
 git clone <URL>
 cd WebApiEvent
-2. Запустить инфраструктуру (PostgreSQL, Kafka, ZooKeeper)
-bash
 docker compose up -d
-3. Запустить приложение
-bash
 dotnet run
-При первом запуске база данных и таблицы создаются автоматически через EnsureCreated(), а также заполняются начальными тестовыми данными.
 
-Конфигурация
-Строка подключения к PostgreSQL находится в appsettings.json:
+Swagger: https://localhost:7065/swagger
 
-json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=events;Username=postgres;Password=postgres"
-  }
-}
-При необходимости измените параметры подключения под своё окружение.
+## Миграции
 
-## Swagger
+Схема БД управляется миграциями EF Core. При запуске применяются автоматически через Migrate(). Создание новой миграции: dotnet ef migrations add <Name>.
 
-https://localhost:7065/swagger/index.html
+## Тесты
 
-http://localhost:5171/swagger/index.html
+Модульные (InMemory): cd WebApiEvent.Tests && dotnet test. Интеграционные (Testcontainers PostgreSQL, требуется Docker): cd EventApi.IntegrationTests && dotnet test.
 
-Тесты
-bash
-cd WebApiEvent.Tests
-dotnet test
-Тесты используют InMemory-провайдер EF Core и не требуют запущенной базы данных.
+## Эндпоинты
 
-Новые эндпоинты (спринт 3)
-POST /events/{id}/book – создать бронь на мероприятие.
-Возвращает 202 Accepted + заголовок Location: /bookings/{bookingId} и тело брони.
+GET /Events — список событий с пагинацией и фильтрами (title, from, to, page, pageSize). POST /Events — создать событие. GET /Events/{id} — получить событие. PUT /Events/{id} — обновить событие. DELETE /Events/{id} — удалить событие. PATCH /Events/{id}/soft-delete — деактивировать событие. POST /Events/{id}/book — создать бронь. GET /Bookings/{id} — статус брони.
 
-GET /bookings/{id} – получить статус брони.
-Возвращает 200 OK с информацией о брони.
+## Данные
 
-Модель Booking
-Id (Guid)
-
-EventId (Guid)
-
-Status (BookingStatus: Pending, Confirmed, Rejected)
-
-CreatedAt (DateTime)
-
-ProcessedAt (DateTime?, заполняется после обработки)
-
-Фоновая обработка
-BookingProcessingService (BackgroundService) запускается каждые 5 секунд.
-
-Находит брони со статусом Pending, имитирует внешний вызов (задержка 2 сек), затем переводит в статус Confirmed и заполняет ProcessedAt.
-
-Хранение данных 
-Данные хранятся в PostgreSQL через Entity Framework Core.
-
-Маппинг сущностей настроен через Fluent API (IEntityTypeConfiguration<T>).
-
-Схема БД создаётся автоматически при запуске через EnsureCreated().
-
-Сервисы работают с AppDbContext напрямую и зарегистрированы как Scoped.
-
-Фоновый сервис использует IServiceScopeFactory для работы со Scoped-зависимостями.
-
-Пример сценария
-Создать событие: POST /events → получаем id.
-
-Создать бронь: POST /events/{id}/book → получаем 202 Accepted, Location: /bookings/{bookingId}, статус Pending.
-
-Сразу проверить: GET /bookings/{bookingId} → статус Pending.
-
-Подождать 5–7 секунд, повторить GET → статус Confirmed, ProcessedAt заполнено.
+PostgreSQL, маппинг через Fluent API, репозитории для доступа к данным, фоновая обработка броней (Pending → Confirmed, ~5 сек).
