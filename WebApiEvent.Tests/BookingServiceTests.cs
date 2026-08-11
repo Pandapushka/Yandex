@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.DataAccess;
+using WebApiEvent.DataAccess.Repositories;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Enums;
 using WebApiEvent.Services;
@@ -17,6 +18,8 @@ public class BookingServiceTests
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IBookingService, BookingService>();
         _serviceProvider = services.BuildServiceProvider();

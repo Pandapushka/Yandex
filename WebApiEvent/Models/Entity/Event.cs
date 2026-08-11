@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using WebApiEvent.CustomExceptions;
+﻿using WebApiEvent.CustomExceptions;
 
 namespace WebApiEvent.Models.Entity
 {

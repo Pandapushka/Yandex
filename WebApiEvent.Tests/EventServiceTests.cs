@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WebApiEvent.CustomExceptions;
 using WebApiEvent.DataAccess;
+using WebApiEvent.DataAccess.Repositories;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Models.Entity;
 using WebApiEvent.Services;
@@ -19,6 +20,7 @@ public class EventServiceTests
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IEventRepository, EventRepository>();
         services.AddScoped<IEventService, EventService>();
         _serviceProvider = services.BuildServiceProvider();
 
@@ -136,7 +138,7 @@ public class EventServiceTests
     {
         using var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var request = new EventRequestDto { Title = "конферен" };
+        var request = new EventRequestDto { Title = "Конференция A" };
 
         var result = await service.GetAllAsync(request);
 
