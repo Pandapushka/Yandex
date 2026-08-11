@@ -1,3 +1,16 @@
+# REST API для управления мероприятиями на ASP.NET Core Web API
+
+## Требования
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- PostgreSQL (запускается через Docker Compose)
+
+## Запуск
+
+### 1. Клонировать репозиторий
+
+```bash
 git clone <URL>
 cd WebApiEvent
 2. Запустить инфраструктуру (PostgreSQL, Kafka, ZooKeeper)
@@ -19,8 +32,7 @@ json
 }
 При необходимости измените параметры подключения под своё окружение.
 
-Swagger
-Документация API доступна после запуска:
+## Swagger
 
 https://localhost:7065/swagger/index.html
 

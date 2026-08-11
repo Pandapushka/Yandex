@@ -1,4 +1,5 @@
-﻿using WebApiEvent.CustomExceptions;
+﻿using System.ComponentModel.DataAnnotations;
+using WebApiEvent.CustomExceptions;
 
 namespace WebApiEvent.Models.Entity
 {
@@ -9,12 +10,12 @@ namespace WebApiEvent.Models.Entity
         public DateTime StartAt { get; private set; }
         public DateTime EndAt { get; private set; }
         public bool IsActive { get; private set; } = true;
-        public int TotalSeats { get; private set; }
-        public int AvailableSeats { get; private set; }
+
+        public ICollection<Booking> Bookings { get; private set; } = new List<Booking>();
 
         private Event() { }
 
-        public static Event Create(string title, string description, DateTime startAt, DateTime endAt, int totalSeats)
+        public static Event Create(string title, string description, DateTime startAt, DateTime endAt)
         {
             if (string.IsNullOrWhiteSpace(title))
                 throw new DomainException("Заголовок обязателен");
@@ -22,18 +23,13 @@ namespace WebApiEvent.Models.Entity
             if (startAt >= endAt)
                 throw new DomainException("Дата окончания должна быть позже даты начала");
 
-            if (totalSeats <= 0)
-                throw new DomainException("Количество мест должно быть больше нуля");
-
             return new Event
             {
                 Id = Guid.NewGuid(),
                 Title = title,
                 Description = description,
                 StartAt = startAt,
-                EndAt = endAt,
-                TotalSeats = totalSeats,
-                AvailableSeats = totalSeats
+                EndAt = endAt
             };
         }
 
@@ -52,21 +48,5 @@ namespace WebApiEvent.Models.Entity
         }
 
         public void Deactivate() => IsActive = false;
-
-        public bool TryReserveSeats(int count = 1)
-        {
-            if (count <= 0) return false;
-            if (AvailableSeats < count) return false;
-            AvailableSeats -= count;
-            return true;
-        }
-
-        public void ReleaseSeats(int count = 1)
-        {
-            if (count <= 0) return;
-            int newAvailable = AvailableSeats + count;
-            if (newAvailable > TotalSeats) newAvailable = TotalSeats;
-            AvailableSeats = newAvailable;
-        }
     }
 }

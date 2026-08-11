@@ -6,8 +6,6 @@
         string Title,
         string? Description,
         DateTime StartAt,
-        DateTime EndAt,
-        int TotalSeats,
-        int AvailableSeats
+        DateTime EndAt
     );
 }
