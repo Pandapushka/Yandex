@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace WebApiEvent.Models.DTOs.EventDtos
+﻿namespace WebApiEvent.Models.DTOs.EventDtos
 {
     public record EventDtoResponse
     (
