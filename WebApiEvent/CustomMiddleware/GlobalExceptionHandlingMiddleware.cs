@@ -62,7 +62,6 @@ namespace WebApiEvent.CustomMiddleware
                 CustomValidationException => StatusCodes.Status400BadRequest,
                 NotFoundException => StatusCodes.Status404NotFound,
                 DomainException => StatusCodes.Status400BadRequest,
-                NoAvailableSeatsException => StatusCodes.Status409Conflict,
                 _ => StatusCodes.Status500InternalServerError
             };
     }

@@ -6,14 +6,13 @@ namespace WebApiEvent.Services
 {
     public class BookingProcessingService : BackgroundService
     {
-        private readonly List<Booking> _bookings;
-        private readonly List<Event> _events;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly TimeSpan _interval = TimeSpan.FromSeconds(5);
-        private readonly SemaphoreSlim _processingSemaphore = new(1, 1);
+        private readonly TimeSpan _processingDelay = TimeSpan.FromSeconds(2);
 
-        public BookingProcessingService(List<Booking> bookings)
+        public BookingProcessingService(IServiceScopeFactory scopeFactory)
         {
-            _bookings = bookings;
+            _scopeFactory = scopeFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,16 +29,18 @@ namespace WebApiEvent.Services
                         .ToList();
                 }
 
-                foreach (var booking in pendingBookings)
+                foreach (var bookingId in pendingBookingIds)
                 {
                     await Task.Delay(_processingDelay, stoppingToken);
 
-                    lock (_bookings)
+                    using (var scope = _scopeFactory.CreateScope())
                     {
-                        var currentBooking = _bookings.FirstOrDefault(b => b.Id == booking.Id);
-                        if (currentBooking != null && currentBooking.Status == BookingStatus.Pending)
+                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        var booking = db.Bookings.FirstOrDefault(b => b.Id == bookingId);
+                        if (booking != null && booking.Status == BookingStatus.Pending)
                         {
-                            currentBooking.Confirm();
+                            booking.Confirm();
+                            await db.SaveChangesAsync(stoppingToken);
                         }
                     }
                 }

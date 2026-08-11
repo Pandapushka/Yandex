@@ -15,9 +15,10 @@ namespace WebApiEvent
             services.AddSwaggerGen();
             services.AddCorsPolicyCustom();
 
-            services.AddSingleton<List<Event>>(sp => SeedData.GetEvents());
-            services.AddSingleton<IEventService, EventService>();
-            services.AddSingleton<List<Booking>>();
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+
+            services.AddScoped<IEventService, EventService>();
             services.AddScoped<IBookingService, BookingService>();
             services.AddHostedService<BookingProcessingService>();
 
