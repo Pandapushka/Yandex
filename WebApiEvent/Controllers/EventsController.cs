@@ -3,6 +3,7 @@ using WebApiEvent.Models.DTOs;
 using WebApiEvent.Models.DTOs.BookingDtos;
 using WebApiEvent.Models.DTOs.EventDtos;
 using WebApiEvent.Services;
+using Microsoft.AspNetCore.Http;
 
 namespace WebApiEvent.Controllers
 {
@@ -53,6 +54,7 @@ namespace WebApiEvent.Controllers
         }
 
         [HttpPost("{id:guid}/book")]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<ResponseServerDto<BookingResponse>>> BookEvent(Guid id)
         {
             var booking = await _bookingService.CreateBookingAsync(id);

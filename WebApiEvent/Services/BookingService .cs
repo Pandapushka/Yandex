@@ -8,34 +8,28 @@ namespace WebApiEvent.Services
 {
     public class BookingService : IBookingService
     {
-        private readonly AppDbContext _context;
-        private readonly IEventService _eventService;
-        private static readonly SemaphoreSlim _semaphore = new(1, 1);
+        private readonly List<Booking> _bookings;
+        private readonly List<Event> _events;
+        private readonly object _bookingLock = new();
 
-        public BookingService(AppDbContext context, IEventService eventService)
+        public BookingService(List<Booking> bookings, IEventService eventService)
         {
-            _context = context;
+            _bookings = bookings;
             _eventService = eventService;
         }
 
         public async Task<BookingResponse> CreateBookingAsync(Guid eventId)
         {
-            await _eventService.GetByIdAsync(eventId);
+            _eventService.GetById(eventId);
 
             var booking = Booking.CreatePending(eventId);
 
-            await _semaphore.WaitAsync();
-            try
+            lock (_bookings)
             {
-                _context.Bookings.Add(booking);
-                await _context.SaveChangesAsync();
-            }
-            finally
-            {
-                _semaphore.Release();
+                _bookings.Add(booking);
             }
 
-            return MapToResponse(booking);
+            return Task.FromResult(MapToResponse(booking));
         }
 
         public async Task<BookingResponse> GetBookingAsync(Guid bookingId)
