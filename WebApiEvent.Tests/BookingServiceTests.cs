@@ -1,11 +1,13 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using WebApiEvent.CustomExceptions;
-using WebApiEvent.DataAccess;
-using WebApiEvent.Models.DTOs.EventDtos;
-using WebApiEvent.Models.Enums;
-using WebApiEvent.Services;
+using WebApiEvent.Application.DTOs.Event;
+using WebApiEvent.Application.Interfaces;
+using WebApiEvent.Application.Services;
+using WebApiEvent.Domain.Enums;
+using WebApiEvent.Domain.Exceptions;
+using WebApiEvent.Infrastructure.Persistence;
+using WebApiEvent.Infrastructure.Repositories;
 
 public class BookingServiceTests
 {
@@ -19,6 +21,8 @@ public class BookingServiceTests
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IBookingService, BookingService>();
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
         _serviceProvider = services.BuildServiceProvider();
     }
 

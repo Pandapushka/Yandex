@@ -1,11 +1,13 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using WebApiEvent.CustomExceptions;
-using WebApiEvent.DataAccess;
-using WebApiEvent.Models.DTOs.EventDtos;
-using WebApiEvent.Models.Entity;
-using WebApiEvent.Services;
+using WebApiEvent.Application.DTOs.Event;
+using WebApiEvent.Application.Interfaces;
+using WebApiEvent.Application.Services;
+using WebApiEvent.Domain.Entities;
+using WebApiEvent.Domain.Exceptions;
+using WebApiEvent.Infrastructure.Persistence;
+using WebApiEvent.Infrastructure.Repositories;
 
 namespace WebApiEvent.Tests;
 
@@ -20,14 +22,15 @@ public class EventServiceTests
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IEventRepository, EventRepository>();
         _serviceProvider = services.BuildServiceProvider();
 
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Events.AddRange(
-            Event.Create("Конференция A", "Описание A", new DateTime(2026, 1, 10, 9, 0, 0), new DateTime(2026, 1, 10, 18, 0, 0)),
-            Event.Create("Митап B", "Описание B", new DateTime(2026, 2, 15, 18, 0, 0), new DateTime(2026, 2, 15, 21, 0, 0)),
-            Event.Create("Воркшоп C", "Описание C", new DateTime(2026, 3, 5, 10, 0, 0), new DateTime(2026, 3, 5, 17, 0, 0))
+            Event.Create("РљРѕРЅС„РµСЂРµРЅС†РёСЏ A", "РћРїРёСЃР°РЅРёРµ A", new DateTime(2026, 1, 10, 9, 0, 0), new DateTime(2026, 1, 10, 18, 0, 0)),
+            Event.Create("РњРёС‚Р°Рї B", "РћРїРёСЃР°РЅРёРµ B", new DateTime(2026, 2, 15, 18, 0, 0), new DateTime(2026, 2, 15, 21, 0, 0)),
+            Event.Create("Р’РѕСЂРєС€РѕРї C", "РћРїРёСЃР°РЅРёРµ C", new DateTime(2026, 3, 5, 10, 0, 0), new DateTime(2026, 3, 5, 17, 0, 0))
         );
         db.SaveChanges();
     }
@@ -37,14 +40,14 @@ public class EventServiceTests
     {
         using var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var request = new EventDtoRequest("Новое событие", "Описание", new DateTime(2026, 5, 1, 10, 0, 0), new DateTime(2026, 5, 1, 18, 0, 0));
+        var request = new EventDtoRequest("РќРѕРІРѕРµ СЃРѕР±С‹С‚РёРµ", "РћРїРёСЃР°РЅРёРµ", new DateTime(2026, 5, 1, 10, 0, 0), new DateTime(2026, 5, 1, 18, 0, 0));
 
         var id = await service.CreateAsync(request);
         var all = await service.GetAllAsync(new EventRequestDto { PageSize = 100 });
 
         id.Should().NotBeEmpty();
         all.Items.Should().HaveCount(4);
-        all.Items.Should().Contain(e => e.Id == id && e.Title == "Новое событие");
+        all.Items.Should().Contain(e => e.Id == id && e.Title == "РќРѕРІРѕРµ СЃРѕР±С‹С‚РёРµ");
     }
 
     [Fact]
@@ -87,15 +90,15 @@ public class EventServiceTests
         var existing = all.Items.First();
         var updateRequest = new UpdateEventDtoRequest
         {
-            Title = "Обновлённый заголовок",
-            Description = "Новое описание"
+            Title = "РћР±РЅРѕРІР»С‘РЅРЅС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє",
+            Description = "РќРѕРІРѕРµ РѕРїРёСЃР°РЅРёРµ"
         };
 
         await service.UpdateAsync(existing.Id, updateRequest);
         var updated = await service.GetByIdAsync(existing.Id);
 
-        updated!.Title.Should().Be("Обновлённый заголовок");
-        updated.Description.Should().Be("Новое описание");
+        updated!.Title.Should().Be("РћР±РЅРѕРІР»С‘РЅРЅС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє");
+        updated.Description.Should().Be("РќРѕРІРѕРµ РѕРїРёСЃР°РЅРёРµ");
     }
 
     [Fact]
@@ -136,11 +139,11 @@ public class EventServiceTests
     {
         using var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var request = new EventRequestDto { Title = "конферен" };
+        var request = new EventRequestDto { Title = "РєРѕРЅС„РµСЂРµРЅ" };
 
         var result = await service.GetAllAsync(request);
 
-        result.Items.Should().ContainSingle(e => e.Title == "Конференция A");
+        result.Items.Should().ContainSingle(e => e.Title == "РљРѕРЅС„РµСЂРµРЅС†РёСЏ A");
     }
 
     [Fact]
@@ -156,7 +159,7 @@ public class EventServiceTests
 
         var result = await service.GetAllAsync(request);
 
-        result.Items.Should().ContainSingle(e => e.Title == "Митап B");
+        result.Items.Should().ContainSingle(e => e.Title == "РњРёС‚Р°Рї B");
     }
 
     [Fact]
@@ -184,7 +187,7 @@ public class EventServiceTests
         using var scope = _serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IEventService>();
         Func<Task> act = async () => await service.GetByIdAsync(Guid.NewGuid());
-        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдено*");
+        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*РЅРµ РЅР°Р№РґРµРЅРѕ*");
     }
 
     [Fact]
@@ -205,7 +208,7 @@ public class EventServiceTests
         var request = new EventDtoRequest("Test", "Desc", new DateTime(2026, 5, 10, 10, 0, 0), new DateTime(2026, 5, 9, 18, 0, 0));
 
         Func<Task> act = async () => await service.CreateAsync(request);
-        await act.Should().ThrowAsync<CustomValidationException>().WithMessage("*позже даты начала*");
+        await act.Should().ThrowAsync<CustomValidationException>().WithMessage("*РїРѕР·Р¶Рµ РґР°С‚С‹ РЅР°С‡Р°Р»Р°*");
     }
 
     [Fact]
