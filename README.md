@@ -28,7 +28,7 @@ Swagger: https://localhost:7065/swagger
 
 ## Миграции
 
-Схема БД создаётся автоматически через EnsureCreated(). Создание новой миграции: dotnet ef migrations add <Name> --project WebApiEvent.Infrastructure --startup-project WebApiEvent.Presentation.
+Схема БД управляется миграциями EF Core. При запуске применяются автоматически через Migrate(). Создание новой миграции: dotnet ef migrations add <Name> --project WebApiEvent.Infrastructure --startup-project WebApiEvent.Presentation.
 
 ## Тесты
 
