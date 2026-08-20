@@ -20,7 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\WebApiEvent\WebApiEvent.csproj" />
+    <ProjectReference Include="..\WebApiEvent.Application\WebApiEvent.Application.csproj" />
+    <ProjectReference Include="..\WebApiEvent.Infrastructure\WebApiEvent.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
