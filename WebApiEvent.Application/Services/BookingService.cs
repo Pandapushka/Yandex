@@ -49,9 +49,14 @@ namespace WebApiEvent.Application.Services
             }
         }
 
-        public async Task<BookingResponse> GetBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
+        public async Task<BookingResponse> GetBookingAsync(
+            Guid bookingId, Guid currentUserId, bool isAdmin, CancellationToken cancellationToken = default)
         {
             var booking = await GetBookingByIdAsync(bookingId, cancellationToken);
+
+            if (!isAdmin && booking.UserId != currentUserId)
+                throw new ForbiddenException("Недостаточно прав для просмотра чужой брони");
+
             return MapToResponse(booking);
         }
 
@@ -61,6 +66,13 @@ namespace WebApiEvent.Application.Services
 
             if (!isAdmin && booking.UserId != currentUserId)
                 throw new ForbiddenException("Недостаточно прав для отмены чужой брони");
+
+            var eventEntity = await _eventRepository.GetByIdAsync(booking.EventId, cancellationToken);
+            if (eventEntity == null)
+                throw new NotFoundException($"Событие с Id {booking.EventId} не найдено");
+
+            if (eventEntity.StartAt <= DateTime.UtcNow)
+                throw new EventAlreadyStartedException("Нельзя отменить бронь после начала события");
 
             booking.Cancel();
             await _bookingRepository.SaveChangesAsync(cancellationToken);

@@ -25,7 +25,7 @@ namespace WebApiEvent.Tests
             services.AddDbContext<AppDbContext>(options =>
                 options.UseInMemoryDatabase(dbName));
             services.AddScoped<IUserRepository, UserRepository>();
-            services.AddScoped<IPasswordHasher, Sha256PasswordHasher>();
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddSingleton(Options.Create(new JwtOptions
             {
                 Key = "this-is-a-very-long-secret-key-for-jwt-hs256-at-least-32-characters",
@@ -89,7 +89,7 @@ namespace WebApiEvent.Tests
         }
 
         [Fact]
-        public async Task LoginAsync_WrongPassword_ThrowsValidationException()
+        public async Task LoginAsync_WrongPassword_ThrowsInvalidCredentialsException()
         {
             using var scope = _serviceProvider.CreateScope();
             var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
@@ -97,18 +97,18 @@ namespace WebApiEvent.Tests
 
             Func<Task> act = async () =>
                 await auth.LoginAsync(new LoginRequest("user1", "wrong-password"));
-            await act.Should().ThrowAsync<CustomValidationException>();
+            await act.Should().ThrowAsync<InvalidCredentialsException>();
         }
 
         [Fact]
-        public async Task LoginAsync_NonExistentUser_ThrowsValidationException()
+        public async Task LoginAsync_NonExistentUser_ThrowsInvalidCredentialsException()
         {
             using var scope = _serviceProvider.CreateScope();
             var auth = scope.ServiceProvider.GetRequiredService<IAuthService>();
 
             Func<Task> act = async () =>
                 await auth.LoginAsync(new LoginRequest("ghost", "password123"));
-            await act.Should().ThrowAsync<CustomValidationException>();
+            await act.Should().ThrowAsync<InvalidCredentialsException>();
         }
     }
 }

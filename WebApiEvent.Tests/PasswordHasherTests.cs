@@ -5,15 +5,31 @@ namespace WebApiEvent.Tests
 {
     public class PasswordHasherTests
     {
-        private readonly Sha256PasswordHasher _hasher = new();
+        private readonly PasswordHasher _hasher = new();
 
         [Fact]
-        public void Hash_ReturnsHexString()
+        public void Hash_ReturnsNonEmptyHash()
         {
             var hash = _hasher.Hash("password123");
 
             hash.Should().NotBeNullOrEmpty();
-            hash.Should().HaveLength(64);
+        }
+
+        [Fact]
+        public void Hash_DoesNotContainPlainPassword()
+        {
+            var hash = _hasher.Hash("password123");
+
+            hash.Should().NotContain("password123");
+        }
+
+        [Fact]
+        public void Hash_SamePassword_ProducesDifferentHashes()
+        {
+            var hash1 = _hasher.Hash("password123");
+            var hash2 = _hasher.Hash("password123");
+
+            hash1.Should().NotBe(hash2);
         }
 
         [Fact]

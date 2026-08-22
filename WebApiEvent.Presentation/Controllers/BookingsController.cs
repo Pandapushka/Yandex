@@ -15,7 +15,10 @@ namespace WebApiEvent.Presentation.Controllers
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ResponseServerDto<BookingResponse>>> GetBooking(Guid id, CancellationToken cancellationToken)
         {
-            var result = await _bookingService.GetBookingAsync(id, cancellationToken);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var isAdmin = User.IsInRole("Admin");
+
+            var result = await _bookingService.GetBookingAsync(id, userId, isAdmin, cancellationToken);
             return Ok(ResponseServerDto<BookingResponse>.Success(result, 200));
         }
 

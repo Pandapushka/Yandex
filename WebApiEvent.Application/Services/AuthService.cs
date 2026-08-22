@@ -42,7 +42,7 @@ namespace WebApiEvent.Application.Services
 
             // Одно сообщение и для неверного логина, и для неверного пароля.
             if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
-                throw new CustomValidationException("Неверный логин или пароль");
+                throw new InvalidCredentialsException("Неверный логин или пароль");
 
             var token = _tokenGenerator.Generate(user.Id, user.Login, user.Role);
             return new LoginResponse(token);

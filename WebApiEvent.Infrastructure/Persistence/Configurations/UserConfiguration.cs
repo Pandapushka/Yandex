@@ -20,10 +20,10 @@ namespace WebApiEvent.Infrastructure.Persistence.Configurations
             // Уникальный индекс на логин — защита от дубликатов на уровне БД.
             builder.HasIndex(u => u.Login).IsUnique();
 
-            // SHA-256 даёт 32 байта → 64 символа в hex-строке.
+            // PBKDF2 (Identity PasswordHasher): формат "{iterations}.{salt}.{subkey}" в base64.
             builder.Property(u => u.PasswordHash)
                 .IsRequired()
-                .HasMaxLength(64);
+                .HasMaxLength(255);
 
             builder.Property(u => u.Role)
                 .IsRequired()

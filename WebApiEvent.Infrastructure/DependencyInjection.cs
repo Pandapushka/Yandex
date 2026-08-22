@@ -32,7 +32,7 @@ namespace WebApiEvent.Infrastructure
 
         public static IServiceCollection AddSecurityServices(this IServiceCollection services)
         {
-            services.AddScoped<IPasswordHasher, Sha256PasswordHasher>();
+            services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
             return services;
