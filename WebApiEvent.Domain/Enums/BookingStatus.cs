@@ -4,6 +4,7 @@ namespace WebApiEvent.Domain.Enums
     {
         Pending,
         Confirmed,
-        Rejected
+        Rejected,
+        Cancelled
     }
 }
