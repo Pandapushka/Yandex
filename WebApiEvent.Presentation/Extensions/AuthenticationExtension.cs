@@ -9,7 +9,6 @@ namespace WebApiEvent.Presentation.Extensions
 {
     public static class AuthenticationExtension
     {
-        /// <summary>Привязка настроек Jwt и настройка проверки токенов.</summary>
         public static IServiceCollection AddJwtAuthentication(
             this IServiceCollection services, IConfiguration configuration)
         {

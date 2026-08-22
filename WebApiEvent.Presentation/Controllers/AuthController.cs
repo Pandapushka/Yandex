@@ -10,7 +10,6 @@ namespace WebApiEvent.Presentation.Controllers
     [Route("auth")]
     public class AuthController(IAuthService _authService) : ControllerBase
     {
-        // Публичная регистрация обычного пользователя.
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
         {
@@ -18,7 +17,6 @@ namespace WebApiEvent.Presentation.Controllers
             return NoContent();
         }
 
-        // Регистрация администратора — только для роли Admin.
         [Authorize(Roles = "Admin")]
         [HttpPost("register-admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] RegisterRequest request, CancellationToken cancellationToken)
@@ -27,7 +25,6 @@ namespace WebApiEvent.Presentation.Controllers
             return NoContent();
         }
 
-        // Вход: возвращает JWT.
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
         {

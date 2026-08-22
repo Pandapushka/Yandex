@@ -6,7 +6,6 @@ namespace WebApiEvent.Presentation.Extensions
 {
     public static class SwaggerExtension
     {
-        /// <summary>Swagger с поддержкой JWT (кнопка Authorize).</summary>
         public static IServiceCollection AddSwaggerWithJwt(this IServiceCollection services)
         {
             services.AddEndpointsApiExplorer();
