@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WebApiEvent.Application.Interfaces;
 using WebApiEvent.Infrastructure.Persistence;
 using WebApiEvent.Infrastructure.Repositories;
+using WebApiEvent.Infrastructure.Security;
 
 namespace WebApiEvent.Infrastructure
 {
@@ -15,6 +16,7 @@ namespace WebApiEvent.Infrastructure
                 options.UseNpgsql(connectionString));
 
             services.AddRepositories();
+            services.AddSecurityServices();
 
             return services;
         }
@@ -23,6 +25,15 @@ namespace WebApiEvent.Infrastructure
         {
             services.AddScoped<IEventRepository, EventRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddSecurityServices(this IServiceCollection services)
+        {
+            services.AddScoped<IPasswordHasher, Sha256PasswordHasher>();
+            services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
             return services;
         }

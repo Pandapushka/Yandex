@@ -1,3 +1,4 @@
+using System.Threading;
 using WebApiEvent.Application.DTOs.Booking;
 using WebApiEvent.Application.Interfaces;
 using WebApiEvent.Domain.Entities;
@@ -7,46 +8,71 @@ namespace WebApiEvent.Application.Services
 {
     public class BookingService : IBookingService
     {
+        private const int MaxActiveBookingsPerUser = 10;
+
         private readonly IBookingRepository _bookingRepository;
-        private readonly IEventService _eventService;
+        private readonly IEventRepository _eventRepository;
         private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public BookingService(IBookingRepository bookingRepository, IEventService eventService)
+        public BookingService(IBookingRepository bookingRepository, IEventRepository eventRepository)
         {
             _bookingRepository = bookingRepository;
-            _eventService = eventService;
+            _eventRepository = eventRepository;
         }
 
-        public async Task<BookingResponse> CreateBookingAsync(Guid eventId)
+        public async Task<BookingResponse> CreateBookingAsync(Guid userId, Guid eventId, CancellationToken cancellation = default)
         {
-            await _eventService.GetByIdAsync(eventId);
+            var eventEntity = await _eventRepository.GetActiveByIdAsync(eventId, cancellation);
+            
+            if (eventEntity == null)
+                throw new NotFoundException($"Событие с Id {eventId} не найдено");
 
-            var booking = Booking.CreatePending(eventId);
+            if(eventEntity.StartAt <= DateTime.UtcNow)
+                throw new EventAlreadyStartedException("Нельзя забронировать событие, которое уже началось");
 
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellation);
             try
             {
+                var activeCount = await _bookingRepository.CountActiveByUserAsync(userId, cancellation);
+                if (activeCount >= MaxActiveBookingsPerUser)
+                    throw new BookingLimitExceededException(MaxActiveBookingsPerUser);
+
+                var booking = Booking.CreatePending(userId, eventId);
                 _bookingRepository.Add(booking);
-                await _bookingRepository.SaveChangesAsync();
+                await _bookingRepository.SaveChangesAsync(cancellation);
+
+                return MapToResponse(booking);
             }
             finally
             {
                 _semaphore.Release();
             }
+        }
 
+        public async Task<BookingResponse> GetBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
+        {
+            var booking = await GetBookingByIdAsync(bookingId, cancellationToken);
             return MapToResponse(booking);
         }
 
-        public async Task<BookingResponse> GetBookingAsync(Guid bookingId)
+        public async Task CancelBookingAsync(Guid bookingId, Guid currentUserId, bool isAdmin, CancellationToken cancellationToken)
         {
-            var booking = await _bookingRepository.GetByIdAsync(bookingId);
+            var booking = await GetBookingByIdAsync(bookingId, cancellationToken);
+
+            if (!isAdmin && booking.UserId != currentUserId)
+                throw new ForbiddenException("Недостаточно прав для отмены чужой брони");
+
+            booking.Cancel();
+            await _bookingRepository.SaveChangesAsync(cancellationToken);
+        }
+        private async Task<Booking> GetBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
+        {
+            var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken);
 
             if (booking == null)
                 throw new NotFoundException($"Бронь с Id {bookingId} не найдена");
-
-            return MapToResponse(booking);
+            return booking;
         }
-
         private static BookingResponse MapToResponse(Booking booking) => new(
             booking.Id,
             booking.EventId,

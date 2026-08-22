@@ -4,7 +4,8 @@ namespace WebApiEvent.Application.Interfaces
 {
     public interface IBookingService
     {
-        Task<BookingResponse> CreateBookingAsync(Guid eventId);
-        Task<BookingResponse> GetBookingAsync(Guid bookingId);
+        Task<BookingResponse> CreateBookingAsync(Guid userId, Guid eventId, CancellationToken cancellationToken = default);
+        Task<BookingResponse> GetBookingAsync(Guid bookingId, CancellationToken cancellationToken = default);
+        Task CancelBookingAsync(Guid bookingId, Guid currentUserId, bool isAdmin, CancellationToken cancellationToken = default);
     }
 }

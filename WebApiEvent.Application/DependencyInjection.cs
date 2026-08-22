@@ -10,6 +10,7 @@ namespace WebApiEvent.Application
         {
             services.AddScoped<IEventService, EventService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IAuthService, AuthService>();
             services.AddHostedService<BookingProcessingService>();
 
             return services;

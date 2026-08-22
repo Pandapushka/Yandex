@@ -34,7 +34,7 @@ namespace WebApiEvent.Infrastructure.Security
                 issuer: _options.Issuer,
                 audience: _options.Audience,
                 claims: claims,
-                notBefore: DateTime.Now,
+                notBefore: DateTime.UtcNow,
                 expires: DateTime.UtcNow.AddMinutes(_options.LifetimeMinutes),
                 signingCredentials: credentials);
 

@@ -61,6 +61,9 @@ namespace WebApiEvent.Presentation.Middleware
             {
                 CustomValidationException => StatusCodes.Status400BadRequest,
                 NotFoundException => StatusCodes.Status404NotFound,
+                EventAlreadyStartedException => StatusCodes.Status400BadRequest,
+                BookingLimitExceededException => StatusCodes.Status409Conflict,
+                ForbiddenException => StatusCodes.Status403Forbidden,
                 DomainException => StatusCodes.Status400BadRequest,
                 _ => StatusCodes.Status500InternalServerError
             };

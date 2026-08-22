@@ -32,5 +32,11 @@ namespace WebApiEvent.Infrastructure.Repositories
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
             => _context.SaveChangesAsync(cancellationToken);
+
+        public async Task<int> CountActiveByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var count = await _context.Bookings.CountAsync(b=> b.UserId == userId && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed), cancellationToken);
+            return count;
+        }
     }
 }

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApiEvent.Application.DTOs;
 using WebApiEvent.Application.DTOs.Booking;
@@ -24,13 +26,16 @@ namespace WebApiEvent.Presentation.Controllers
             return Ok(ResponseServerDto<EventDtoResponse>.Success(result, 200));
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<ResponseServerDto<string>>> Create([FromBody] EventDtoRequest request)
         {
             var id = await _eventService.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id }, ResponseServerDto<string>.Success($"Событие c id {id} успешно создано", 201));
+            return CreatedAtAction(nameof(GetById), new { id },
+                ResponseServerDto<string>.Success($"Событие c id {id} успешно создано", 201));
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id:guid}")]
         public async Task<ActionResult<ResponseServerDto<string>>> Update(Guid id, [FromBody] UpdateEventDtoRequest request)
         {
@@ -38,6 +43,7 @@ namespace WebApiEvent.Presentation.Controllers
             return Ok(ResponseServerDto<string>.Success("Событие успешно обновлено", 200));
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<ActionResult<ResponseServerDto<string>>> Delete(Guid id)
         {
@@ -45,6 +51,7 @@ namespace WebApiEvent.Presentation.Controllers
             return Ok(ResponseServerDto<string>.Success("Событие успешно удалено", 200));
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id:guid}/soft-delete")]
         public async Task<ActionResult<ResponseServerDto<string>>> SoftDelete(Guid id)
         {
@@ -52,10 +59,13 @@ namespace WebApiEvent.Presentation.Controllers
             return Ok(ResponseServerDto<string>.Success("Событие успешно деактивировано", 200));
         }
 
+        [Authorize]
         [HttpPost("{id:guid}/book")]
-        public async Task<ActionResult<ResponseServerDto<BookingResponse>>> BookEvent(Guid id)
+        public async Task<ActionResult<ResponseServerDto<BookingResponse>>> BookEvent(Guid id, CancellationToken cancellationToken)
         {
-            var booking = await _bookingService.CreateBookingAsync(id);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var booking = await _bookingService.CreateBookingAsync(userId, id, cancellationToken);
             return AcceptedAtAction(
                 actionName: nameof(BookingsController.GetBooking),
                 controllerName: "Bookings",

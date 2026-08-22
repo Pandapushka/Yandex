@@ -9,117 +9,202 @@ using WebApiEvent.Domain.Exceptions;
 using WebApiEvent.Infrastructure.Persistence;
 using WebApiEvent.Infrastructure.Repositories;
 
-public class BookingServiceTests
+namespace WebApiEvent.Tests
 {
-    private readonly IServiceProvider _serviceProvider;
-
-    public BookingServiceTests()
+    public class BookingServiceTests
     {
-        var dbName = Guid.NewGuid().ToString();
-        var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseInMemoryDatabase(dbName));
-        services.AddScoped<IEventRepository, EventRepository>();
-        services.AddScoped<IBookingRepository, BookingRepository>();
-        services.AddScoped<IEventService, EventService>();
-        services.AddScoped<IBookingService, BookingService>();
-        _serviceProvider = services.BuildServiceProvider();
-    }
+        private readonly IServiceProvider _serviceProvider;
 
-    [Fact]
-    public async Task CreateBookingAsync_ValidEventId_ReturnsBookingResponseWithPendingStatus()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        public BookingServiceTests()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var services = new ServiceCollection();
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseInMemoryDatabase(dbName));
+            services.AddScoped<IEventRepository, EventRepository>();
+            services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<IEventService, EventService>();
+            services.AddScoped<IBookingService, BookingService>();
+            _serviceProvider = services.BuildServiceProvider();
+        }
 
-        var result = await bookingService.CreateBookingAsync(eventId);
+        private static async Task<Guid> CreateFutureEventAsync(IEventService eventService)
+            => await eventService.CreateAsync(new EventDtoRequest(
+                "Event", "Description", DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2)));
 
-        result.Should().NotBeNull();
-        result.EventId.Should().Be(eventId);
-        result.Status.Should().Be(BookingStatus.Pending);
-        result.ProcessedAt.Should().BeNull();
-    }
+        [Fact]
+        public async Task CreateBookingAsync_ValidEvent_ReturnsPendingBooking()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
 
-    [Fact]
-    public async Task GetBookingAsync_ExistingBooking_ReturnsCorrectBookingResponse()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        var booking = await bookingService.CreateBookingAsync(eventId);
+            var result = await bookingService.CreateBookingAsync(Guid.NewGuid(), eventId);
 
-        var result = await bookingService.GetBookingAsync(booking.Id);
+            result.Should().NotBeNull();
+            result.EventId.Should().Be(eventId);
+            result.Status.Should().Be(BookingStatus.Pending);
+            result.ProcessedAt.Should().BeNull();
+        }
 
-        result.Should().NotBeNull();
-        result.Id.Should().Be(booking.Id);
-        result.EventId.Should().Be(eventId);
-        result.Status.Should().Be(BookingStatus.Pending);
-    }
+        [Fact]
+        public async Task GetBookingAsync_ExistingBooking_ReturnsCorrectData()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var booking = await bookingService.CreateBookingAsync(Guid.NewGuid(), eventId);
 
-    [Fact]
-    public async Task CreateBookingAsync_MultipleBookingsForSameEvent_AllHaveUniqueIds()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+            var result = await bookingService.GetBookingAsync(booking.Id);
 
-        var booking1 = await bookingService.CreateBookingAsync(eventId);
-        var booking2 = await bookingService.CreateBookingAsync(eventId);
+            result.Id.Should().Be(booking.Id);
+            result.EventId.Should().Be(eventId);
+            result.Status.Should().Be(BookingStatus.Pending);
+        }
 
-        booking1.Id.Should().NotBe(booking2.Id);
-    }
+        [Fact]
+        public async Task CreateBookingAsync_MultipleBookings_AllHaveUniqueIds()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var userId = Guid.NewGuid();
 
-    [Fact]
-    public async Task CreateBookingAsync_NonExistingEvent_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventId = Guid.NewGuid();
+            var first = await bookingService.CreateBookingAsync(userId, eventId);
+            var second = await bookingService.CreateBookingAsync(userId, eventId);
 
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(eventId);
+            first.Id.Should().NotBe(second.Id);
+        }
 
-        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдено*");
-    }
+        [Fact]
+        public async Task CreateBookingAsync_NonExistingEvent_ThrowsNotFoundException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
-    [Fact]
-    public async Task CreateBookingAsync_SoftDeletedEvent_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
-        var eventId = await eventService.CreateAsync(new EventDtoRequest("Event", "Desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
-        await eventService.SoftDeleteAsync(eventId);
+            Func<Task> act = async () => await bookingService.CreateBookingAsync(Guid.NewGuid(), Guid.NewGuid());
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
 
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(eventId);
+        [Fact]
+        public async Task CreateBookingAsync_SoftDeletedEvent_ThrowsNotFoundException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            await eventService.SoftDeleteAsync(eventId);
 
-        await act.Should().ThrowAsync<NotFoundException>();
-    }
+            Func<Task> act = async () => await bookingService.CreateBookingAsync(Guid.NewGuid(), eventId);
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
 
-    [Fact]
-    public async Task GetBookingAsync_NonExistingId_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var nonExistentId = Guid.NewGuid();
+        [Fact]
+        public async Task GetBookingAsync_NonExistingId_ThrowsNotFoundException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
-        Func<Task> act = async () => await bookingService.GetBookingAsync(nonExistentId);
+            Func<Task> act = async () => await bookingService.GetBookingAsync(Guid.NewGuid());
+            await act.Should().ThrowAsync<NotFoundException>();
+        }
 
-        await act.Should().ThrowAsync<NotFoundException>().WithMessage("*не найдена*");
-    }
+        [Fact]
+        public async Task CreateBookingAsync_AlreadyStartedEvent_ThrowsEventAlreadyStartedException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
 
-    [Fact]
-    public async Task CreateBookingAsync_WithEmptyEventId_ThrowsNotFoundException()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-        var emptyEventId = Guid.Empty;
+            // Событие началось в прошлом, но ещё не завершилось.
+            var eventId = await eventService.CreateAsync(new EventDtoRequest(
+                "Past", "Description", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow.AddHours(1)));
 
-        Func<Task> act = async () => await bookingService.CreateBookingAsync(emptyEventId);
+            Func<Task> act = async () => await bookingService.CreateBookingAsync(Guid.NewGuid(), eventId);
+            await act.Should().ThrowAsync<EventAlreadyStartedException>();
+        }
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        [Fact]
+        public async Task CreateBookingAsync_WhenLimitReached_ThrowsBookingLimitExceededException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var userId = Guid.NewGuid();
+
+            for (var i = 0; i < 10; i++)
+                await bookingService.CreateBookingAsync(userId, eventId);
+
+            Func<Task> act = async () => await bookingService.CreateBookingAsync(userId, eventId);
+            await act.Should().ThrowAsync<BookingLimitExceededException>()
+                .WithMessage("*10*");
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_LimitsArePerUser()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+
+            var userA = Guid.NewGuid();
+            var userB = Guid.NewGuid();
+
+            for (var i = 0; i < 10; i++)
+                await bookingService.CreateBookingAsync(userA, eventId);
+
+            // Лимит пользователя B не зависит от пользователя A.
+            var result = await bookingService.CreateBookingAsync(userB, eventId);
+            result.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_Owner_CanCancel()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var userId = Guid.NewGuid();
+            var booking = await bookingService.CreateBookingAsync(userId, eventId);
+
+            await bookingService.CancelBookingAsync(booking.Id, userId, isAdmin: false);
+
+            (await bookingService.GetBookingAsync(booking.Id)).Status.Should().Be(BookingStatus.Cancelled);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_OtherUser_ThrowsForbiddenException()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var owner = Guid.NewGuid();
+            var booking = await bookingService.CreateBookingAsync(owner, eventId);
+
+            Func<Task> act = async () =>
+                await bookingService.CancelBookingAsync(booking.Id, Guid.NewGuid(), isAdmin: false);
+            await act.Should().ThrowAsync<ForbiddenException>();
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_Admin_CanCancelAnyBooking()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+            var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+            var eventId = await CreateFutureEventAsync(eventService);
+            var booking = await bookingService.CreateBookingAsync(Guid.NewGuid(), eventId);
+
+            await bookingService.CancelBookingAsync(booking.Id, Guid.NewGuid(), isAdmin: true);
+
+            (await bookingService.GetBookingAsync(booking.Id)).Status.Should().Be(BookingStatus.Cancelled);
+        }
     }
 }
