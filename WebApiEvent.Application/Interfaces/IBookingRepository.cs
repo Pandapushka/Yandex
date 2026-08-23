@@ -8,6 +8,8 @@ namespace WebApiEvent.Application.Interfaces
 
         Task<List<Guid>> GetPendingBookingIdsAsync(CancellationToken cancellationToken = default);
 
+        Task<int> CountActiveByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
         void Add(Booking booking);
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);

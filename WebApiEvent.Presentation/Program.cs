@@ -1,9 +1,6 @@
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using WebApiEvent.Application;
 using WebApiEvent.Infrastructure;
-using WebApiEvent.Infrastructure.Data;
-using WebApiEvent.Infrastructure.Persistence;
 using WebApiEvent.Presentation.Extensions;
 using WebApiEvent.Presentation.Middleware;
 
@@ -14,25 +11,16 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
 builder.Services.AddCorsPolicyCustom();
+builder.Services.AddSwaggerWithJwt();
+builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("DefaultConnection"));
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-
-    if (!db.Events.Any())
-    {
-        db.Events.AddRange(SeedData.GetEvents());
-        db.SaveChanges();
-    }
-}
+app.InitializeDatabase();
 
 if (app.Environment.IsDevelopment())
 {
@@ -47,6 +35,7 @@ app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

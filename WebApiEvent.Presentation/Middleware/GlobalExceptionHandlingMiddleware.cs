@@ -60,7 +60,11 @@ namespace WebApiEvent.Presentation.Middleware
             => ex switch
             {
                 CustomValidationException => StatusCodes.Status400BadRequest,
+                InvalidCredentialsException => StatusCodes.Status401Unauthorized,
                 NotFoundException => StatusCodes.Status404NotFound,
+                EventAlreadyStartedException => StatusCodes.Status400BadRequest,
+                BookingLimitExceededException => StatusCodes.Status409Conflict,
+                ForbiddenException => StatusCodes.Status403Forbidden,
                 DomainException => StatusCodes.Status400BadRequest,
                 _ => StatusCodes.Status500InternalServerError
             };
