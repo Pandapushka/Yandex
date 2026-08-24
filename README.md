@@ -1,84 +1,128 @@
-# Event API
+# Event Platform
 
-REST API для управления мероприятиями на ASP.NET Core Web API с JWT-аутентификацией.
+Система управления мероприятиями, разделённая на три микросервиса с асинхронным обменом через Apache Kafka.
 
-## Структура
+## Состав системы
 
-Проект разделён на четыре слоя по принципам чистой архитектуры:
+| Сервис | Зона ответственности | База данных | Порт (локально) |
+| --- | --- | --- | --- |
+| Users (Users/Auth) | регистрация, вход, выдача JWT | `users` | 5101 |
+| Events | CRUD событий и учёт доступных мест | `events` | 5102 |
+| Bookings | создание и отмена броней | `bookings` | 5103 |
 
-- `WebApiEvent.Domain` — сущности, перечисления, доменные исключения (без внешних зависимостей).
-- `WebApiEvent.Application` — use cases, сервисы, интерфейсы портов, DTO (зависит только от Domain).
-- `WebApiEvent.Infrastructure` — DbContext, конфигурации, репозитории, JWT, хэширование паролей (зависит от Application и Domain).
-- `WebApiEvent.Presentation` — контроллеры, middleware, composition root (зависит от Application и Infrastructure).
+Каждый сервис построен по чистой архитектуре (слои `Domain`, `Application`, `Infrastructure`, `Presentation`) и имеет собственную базу PostgreSQL.
 
-Application не зависит от Infrastructure — только через интерфейсы портов.
+Разделяемый проект `BookingContracts` содержит контракт события `BookingConfirmed` и имя топика — его подключают сервисы-издатель и подписчик.
 
-## Требования
+## Поток данных BookingConfirmed
 
-.NET 8 SDK, Docker Desktop.
+1. Пользователь создаёт бронь в сервисе **Bookings** (`POST /bookings`).
+2. Фоновый обработчик подтверждает бронь: сначала сохраняет статус `Confirmed` в свою базу, затем публикует в Kafka событие `BookingConfirmed` в топик `booking-confirmed` (ключ сообщения — `EventId`, чтобы все брони одного события обрабатывались по порядку).
+3. Сервис **Events** подписан на топик `booking-confirmed`. При получении события он уменьшает количество доступных мест у соответствующего события.
 
-## Запуск
+Сервисы не вызывают друг друга напрямую по HTTP — обмен идёт только через Kafka (итоговая согласованность).
+
+## JWT
+
+Токен выдаёт только сервис **Users** (`POST /auth/login`). Сервисы **Events** и **Bookings** проверяют этот же токен — во всех трёх сервисах общие значения секрета, издателя и аудитории (секция `Jwt` в конфигурации).
+
+Права доступа:
+
+- управление событиями (`POST`/`PUT`/`DELETE /events`) — только роль `Admin`;
+- эндпоинты броней — требуют аутентификации, `userId` читается из claims.
+
+Администратор по умолчанию (сидируется в сервисе Users): `admin` / `Admin123!`.
+
+## Запуск в Docker
+
+### Предварительные требования
+
+- Docker с поддержкой Docker Compose;
+- .NET 8 SDK — только если сервисы запускаются локально вне Docker.
+
+### Запуск всей системы (Kafka + базы + сервисы)
 
 ```
-git clone <URL>
-cd Yandex
-docker compose -f WebApiEvent.Presentation/docker-compose.yml up -d events-db
-dotnet run --project WebApiEvent.Presentation --launch-profile http
+docker compose up --build -d
 ```
 
-Swagger: http://localhost:5171/swagger (https: https://localhost:7065/swagger)
+Флаг `-d` запускает в фоне; без него логи выводятся в текущую консоль. Поднимаются контейнеры:
 
-БД применяется автоматически через `db.Database.Migrate()`, при первом запуске сидируются
-демо-события и администратор по умолчанию.
+- инфраструктура: `zookeeper`, `kafka`, `users-db`, `events-db`, `bookings-db`;
+- сервисы: `users-service`, `events-service`, `bookings-service`.
 
-## Аутентификация и роли
-
-- `POST /auth/register` — публичная регистрация обычного пользователя (роль `User`). Возвращает `204`.
-- `POST /auth/register-admin` — регистрация администратора (роль `Admin`). Требует JWT с ролью `Admin`.
-- `POST /auth/login` — вход, возвращает `{ "token": "..." }`.
-
-Администратор по умолчанию (сидируется из `appsettings.json`, секция `SeedAdmin`):
+Проверить статус контейнеров:
 
 ```
-login:    admin
-password: Admin123!
+docker compose ps
 ```
 
-Настройки JWT — секция `Jwt` в `appsettings.json` (`Key`, `Issuer`, `Audience`, `LifetimeMinutes`).
-В Swagger токен вводится через кнопку **Authorize**: `Bearer <токен>`.
+Swagger:
 
-## Роли и доступ
+- Users: http://localhost:5101/swagger
+- Events: http://localhost:5102/swagger
+- Bookings: http://localhost:5103/swagger
 
-| Эндпоинт | Доступ |
+Логи конкретного сервиса, например Events:
+
+```
+docker compose logs -f events-service
+```
+
+Остановить систему (контейнеры удаляются, данные баз сохраняются в volumes):
+
+```
+docker compose down
+```
+
+Остановить и полностью удалить данные баз:
+
+```
+docker compose down -v
+```
+
+### Только базы данных и Kafka (сервисы — локально через dotnet)
+
+Запустить только инфраструктуру:
+
+```
+docker compose up -d zookeeper kafka users-db events-db bookings-db
+```
+
+После этого сервисы можно запускать локально:
+
+```
+dotnet run --project src/Users/Users.Presentation --launch-profile http
+dotnet run --project src/Events/Events.Presentation --launch-profile http
+dotnet run --project src/Bookings/Bookings.Presentation --launch-profile http
+```
+
+Порты локальной разработки: Users — 5101, Events — 5102, Bookings — 5103 (настраиваются в `appsettings.json` и `launchSettings.json` каждого сервиса).
+
+### Порты
+
+| Компонент | Порт (хост) |
 | --- | --- |
-| `GET /Events`, `GET /Events/{id}` | публичный |
-| `POST /Events`, `PUT /Events/{id}`, `DELETE /Events/{id}`, `PATCH /Events/{id}/soft-delete` | `Admin` |
-| `POST /Events/{id}/book` | авторизованный (`User`/`Admin`) |
-| `GET /bookings/{id}` | авторизованный |
-| `DELETE /bookings/{id}` | владелец брони или `Admin` |
+| Kafka (внешний слушатель) | 9092 |
+| База данных `users` | 5432 |
+| База данных `events` | 5433 |
+| База данных `bookings` | 5434 |
+| Сервис Users | 5101 |
+| Сервис Events | 5102 |
+| Сервис Bookings | 5103 |
 
-## Доменные правила бронирования
+Базы доступны с хоста по `localhost:5432/5433/5434` (логин `postgres`, пароль `postgres`). Внутри сети Docker сервисы обращаются к базам по именам `users-db:5432`, `events-db:5432`, `bookings-db:5432`, а к Kafka — по адресу `kafka:29092`.
 
-- Нельзя забронировать событие, которое уже началось → `400`.
-- Максимум 10 активных броней (Pending + Confirmed) на пользователя → `409`.
-- Отменять бронь может только её владелец; администратор может отменить любую → иначе `403`.
-- Фоновая обработка броней: `Pending → Confirmed` (~5 сек).
+## Проверка сценария
 
-## Миграции
+1. В Swagger сервиса Users зарегистрируйте пользователя и получите токен (`POST /auth/login` как `admin` / `Admin123!`).
+2. В Swagger сервиса Events создайте событие администратором и запомните количество мест.
+3. В Swagger сервиса Bookings создайте бронь (`POST /bookings` с `eventId`) и дождитесь подтверждения.
+4. Проверьте в сервисе Events: количество доступных мест уменьшилось — событие прошло через Kafka.
 
-Схема БД управляется миграциями EF Core. При запуске применяются автоматически через `Migrate()`.
-Создание новой миграции:
+## Сборка и тесты
 
 ```
-dotnet ef migrations add <Name> --project WebApiEvent.Infrastructure --startup-project WebApiEvent.Presentation
+dotnet build Yandex.sln
+dotnet test Yandex.sln
 ```
-
-## Тесты
-
-Модульные (InMemory): `dotnet test Yandex.sln`.
-Покрывают доменные правила (лимит броней, запрет прошедших событий, права на отмену),
-сценарии регистрации/входа, хэширование паролей и уникальный индекс логина.
-
-## Данные
-
-PostgreSQL, маппинг через Fluent API, репозитории для доступа к данным.
