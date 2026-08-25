@@ -50,6 +50,19 @@ namespace Events.Infrastructure.Repositories
             return await _context.Events.FirstOrDefaultAsync(e => e.Id == id && e.IsActive, cancellationToken);
         }
 
+        public async Task<List<Event>> GetTopBySoldPercentageAsync(int count, CancellationToken cancellationToken = default)
+        {
+            var events = await _context.Events
+                .Where(e => e.IsActive && e.TotalSeats > 0)
+                .ToListAsync(cancellationToken);
+
+            return events
+                .OrderByDescending(e => (e.TotalSeats - e.AvailableSeats) / (double)e.TotalSeats)
+                .ThenByDescending(e => e.StartAt)
+                .Take(count)
+                .ToList();
+        }
+
         public void Add(Event eventEntity) => _context.Events.Add(eventEntity);
 
         public void Remove(Event eventEntity) => _context.Events.Remove(eventEntity);

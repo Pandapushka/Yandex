@@ -17,6 +17,13 @@ namespace Events.Presentation.Controllers
             return Ok(ResponseServerDto<PaginatedResult<EventDtoResponse>>.Success(result, 200));
         }
 
+        [HttpGet("top")]
+        public async Task<ActionResult<ResponseServerDto<List<EventDtoResponse>>>> GetTop(CancellationToken cancellationToken)
+        {
+            var result = await _eventService.GetTopEventsAsync(10, cancellationToken);
+            return Ok(ResponseServerDto<List<EventDtoResponse>>.Success(result, 200));
+        }
+
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ResponseServerDto<EventDtoResponse>>> GetById(Guid id)
         {

@@ -9,6 +9,7 @@ namespace Events.Domain.Entities
         public DateTime StartAt { get; private set; }
         public DateTime EndAt { get; private set; }
         public bool IsActive { get; private set; } = true;
+        public int TotalSeats { get; private set; }
         public int AvailableSeats { get; private set; }
 
         private Event() { }
@@ -31,6 +32,7 @@ namespace Events.Domain.Entities
                 Description = description,
                 StartAt = startAt,
                 EndAt = endAt,
+                TotalSeats = availableSeats,
                 AvailableSeats = availableSeats
             };
         }

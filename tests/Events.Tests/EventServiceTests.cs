@@ -1,8 +1,10 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Events.Application.DTOs.Event;
 using Events.Application.Interfaces;
+using Events.Application.Options;
 using Events.Application.Services;
 using Events.Domain.Entities;
 using Events.Domain.Exceptions;
@@ -22,6 +24,17 @@ public class EventServiceTests
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventRepository, EventRepository>();
+
+        var cacheMock = new Mock<ICacheService>();
+        cacheMock
+            .Setup(c => c.GetAsync<EventDtoResponse>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EventDtoResponse?)null);
+        cacheMock
+            .Setup(c => c.GetAsync<List<EventDtoResponse>>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((List<EventDtoResponse>?)null);
+        services.AddSingleton(cacheMock.Object);
+        services.AddSingleton(new CacheOptions());
+
         services.AddScoped<IEventService, EventService>();
         _serviceProvider = services.BuildServiceProvider();
 

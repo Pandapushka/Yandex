@@ -23,6 +23,7 @@ namespace Events.Infrastructure.Persistence.Configurations
             builder.Property(e => e.StartAt).IsRequired();
             builder.Property(e => e.EndAt).IsRequired();
             builder.Property(e => e.IsActive).IsRequired();
+            builder.Property(e => e.TotalSeats).IsRequired();
             builder.Property(e => e.AvailableSeats).IsRequired();
         }
     }
