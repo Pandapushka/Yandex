@@ -16,6 +16,8 @@ namespace Events.Application.Interfaces
 
         Task<Event?> GetActiveByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+        Task<List<Event>> GetTopBySoldPercentageAsync(int count, CancellationToken cancellationToken = default);
+
         void Add(Event eventEntity);
 
         void Remove(Event eventEntity);

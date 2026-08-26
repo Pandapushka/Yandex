@@ -7,6 +7,7 @@ namespace Events.Application.DTOs.Event
         string? Description,
         DateTime StartAt,
         DateTime EndAt,
-        int AvailableSeats
+        int AvailableSeats,
+        int TotalSeats
     );
 }
