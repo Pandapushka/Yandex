@@ -1,4 +1,10 @@
 using System.Text.Json.Serialization;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Formatting.Compact;
 using Bookings.Application;
 using Bookings.Infrastructure;
 using Bookings.Presentation.Extensions;
@@ -6,11 +12,27 @@ using Bookings.Presentation.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog((ctx, cfg) =>
+    cfg.ReadFrom.Configuration(ctx.Configuration)
+       .WriteTo.Console(new CompactJsonFormatter()));
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("bookings-service"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddOtlpExporter(o => o.Endpoint = new Uri(builder.Configuration["Otlp:Endpoint"] ?? "http://localhost:4317")))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
 
 builder.Services.AddCorsPolicyCustom();
 builder.Services.AddSwaggerWithJwt();
@@ -39,5 +61,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint();
 
 app.Run();

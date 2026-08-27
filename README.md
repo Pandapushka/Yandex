@@ -49,7 +49,8 @@ docker compose up --build -d
 Флаг `-d` запускает в фоне; без него логи выводятся в текущую консоль. Поднимаются контейнеры:
 
 - инфраструктура: `zookeeper`, `kafka`, `users-db`, `events-db`, `bookings-db`, `redis`;
-- сервисы: `users-service`, `events-service`, `bookings-service`.
+- сервисы: `users-service`, `events-service`, `bookings-service`;
+- наблюдаемость: `prometheus`, `jaeger`, `grafana`.
 
 Проверить статус контейнеров:
 
@@ -111,6 +112,10 @@ dotnet run --project src/Bookings/Bookings.Presentation --launch-profile http
 | Сервис Users | 5101 |
 | Сервис Events | 5102 |
 | Сервис Bookings | 5103 |
+| Prometheus | 9090 |
+| Jaeger (UI) | 16686 |
+| Jaeger (OTLP gRPC) | 4317 |
+| Grafana | 3000 |
 
 Базы доступны с хоста по `localhost:5432/5433/5434` (логин `postgres`, пароль `postgres`). Внутри сети Docker сервисы обращаются к базам по именам `users-db:5432`, `events-db:5432`, `bookings-db:5432`, к Kafka — по адресу `kafka:29092`, к Redis — по адресу `redis:6379`.
 
@@ -175,6 +180,61 @@ Redis — только кеш, а не источник истины. Если R
 2. В Swagger сервиса Events создайте событие администратором и запомните количество мест.
 3. В Swagger сервиса Bookings создайте бронь (`POST /bookings` с `eventId`) и дождитесь подтверждения.
 4. Проверьте в сервисе Events: количество доступных мест уменьшилось — событие прошло через Kafka.
+
+## Наблюдаемость
+
+Каждый сервис инструментирован через **OpenTelemetry SDK** и логирует через **Serilog** в структурированном JSON-формате. Трейсы, метрики и логи собираются тремя столпами наблюдаемости: **Prometheus** (метрики), **Jaeger** (трейсы) и **Grafana** (дашборды).
+
+### Инструменты
+
+| Инструмент | Назначение | UI |
+| --- | --- | --- |
+| Prometheus | сбор и хранение метрик | http://localhost:9090 |
+| Jaeger | распределённый трейсинг | http://localhost:16686 |
+| Grafana | дашборды и визуализация | http://localhost:3000 (логин `admin` / пароль `admin`) |
+
+### Метрики
+
+В каждом сервисе включена автоматическая инструментация ASP.NET Core (`latency`, `throughput`, `error rate`, активные запросы) и рантайма .NET (CPU, память, GC, исключения). Метрики публикуются по адресу `/metrics` каждого сервиса, например:
+
+- http://localhost:5101/metrics — Users;
+- http://localhost:5102/metrics — Events;
+- http://localhost:5103/metrics — Bookings.
+
+Prometheus скрейпит все три сервиса по конфигурации `prometheus.yml` (интервал 15 секунд). Проверить цели можно в разделе **Status → Targets** интерфейса Prometheus — все три сервиса должны быть в статусе `UP`.
+
+### Трейсы
+
+Трейсы собираются для входящих HTTP-запросов (AspNetCore), исходящих HTTP-вызовов (HttpClient) и SQL-запросов к базе (EF Core) и экспортируются в Jaeger по протоколу OTLP/gRPC на порт 4317. Имя сервиса задаётся ресурсом `service.name` (`users-service`, `events-service`, `bookings-service`), поэтому в Jaeger каждый сервис виден под своим именем.
+
+### Логи
+
+Логи выводятся в консоль в формате **Compact JSON** (Serilog) — каждая строка является JSON-объектом с полями времени, уровня, категории и сообщения. Благодаря OpenTelemetry в записи автоматически попадают `TraceId` и `SpanId`, что позволяет связать лог с трейсом в Jaeger.
+
+### Дашборд Grafana
+
+Дашборд «Event Platform — Technical Metrics» добавлен через provisioning (`grafana/provisioning`, `grafana/dashboards/technical-dashboard.json`) и автоматически появляется в Grafana. На нём настроены панели:
+
+- **Throughput (RPS)** — `rate(http_server_request_duration_seconds_count)`;
+- **Latency p95** — `histogram_quantile(0.95, …)`;
+- **Error rate (5xx)** — доля ответов со статусом 5xx в процентах;
+- **In-flight requests** — `http_server_active_requests`;
+- **.NET exceptions** — метрика рантайма .NET.
+
+### Как запустить стек мониторинга
+
+Стек мониторинга поднимается вместе со всей системой одной командой:
+
+```
+docker compose up --build -d
+```
+
+Для локального запуска сервисов (вне Docker) мониторинг можно поднять отдельно:
+
+```
+docker compose up -d prometheus jaeger grafana
+```
+
 
 ## Сборка и тесты
 
